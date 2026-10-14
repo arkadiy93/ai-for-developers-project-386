@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "include-component-in-tag": false,
+      "extra-files": [
+        { "type": "json", "path": "apps/backend/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "apps/frontend/package.json", "jsonpath": "$.version" }
+      ]
+    }
+  }
+}
