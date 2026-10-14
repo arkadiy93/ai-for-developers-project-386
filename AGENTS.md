@@ -43,3 +43,17 @@ CI (`.github/workflows/ci.yml`) runs `format:check`, `lint`, `typecheck`, `test`
 - Commit messages must follow Conventional Commits (`feat:`, `fix:`, `chore:`, ...). A husky `commit-msg` hook enforces this with commitlint.
 - Releases go through release-please. It bumps the version in the root `package.json` and in both app `package.json` files together, so don't edit versions or `CHANGELOG.md` by hand.
 - Prettier and `.editorconfig` set formatting. Existing code uses single quotes.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues for `arkadiy93/ai-for-developers-project-386`, through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses the five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and one `docs/adr/` at the repo root. See `docs/agents/domain.md`.

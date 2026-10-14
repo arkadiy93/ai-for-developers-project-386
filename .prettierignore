@@ -5,3 +5,5 @@ pnpm-lock.yaml
 CHANGELOG.md
 .github/workflows/hexlet-check.yml
 .idea
+.agents
+.claude
