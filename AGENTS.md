@@ -22,6 +22,8 @@ pnpm format         # prettier --write . (pnpm format:check runs in CI)
 pnpm generate       # TypeSpec -> packages/api/generated/{openapi.yaml,api.d.ts}
 ```
 
+The root `Makefile` wraps these: `make` (or `make dev`) installs dependencies and regenerates the contract only when their inputs changed, then starts dev; `make check` runs the CI steps. Keep its targets in sync when adding a pnpm script.
+
 To run a single package or test:
 
 ```bash
