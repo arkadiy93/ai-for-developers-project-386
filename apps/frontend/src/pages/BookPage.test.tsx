@@ -109,9 +109,9 @@ describe('booking page, step 2: time', () => {
 
     const days = within(await screen.findByRole('list', { name: 'Days' })).getAllByRole('button');
     expect(days.map((day) => day.textContent)).toEqual([
-      'Thu, Oct 150 free',
-      'Fri, Oct 162 free',
-      'Sat, Oct 171 free',
+      'Thu 15 Oct0 free',
+      'Fri 16 Oct2 free',
+      'Sat 17 Oct1 free',
     ]);
     expect(days[0]).toBeDisabled();
     expect(days[1]).toBeEnabled();
@@ -133,7 +133,7 @@ describe('booking page, step 2: time', () => {
     expect(starts[1]).toBeDisabled();
     expect(starts[2]).toBeEnabled();
 
-    await userEvent.click(screen.getByRole('button', { name: /Sat, Oct 17/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Sat 17 Oct/ }));
 
     const after = within(screen.getByRole('list', { name: 'Start times' })).getAllByRole('button');
     expect(after.map((start) => start.textContent)).toEqual(['09:00', '09:15']);
@@ -227,7 +227,7 @@ describe('booking page, steps 3 and 4: details and done', () => {
 
     expect(screen.getByText('3. Your details')).toHaveAttribute('aria-current', 'step');
     expect(
-      screen.getByRole('heading', { name: 'Workshop · Fri, Oct 16, 09:30 UTC' }),
+      screen.getByRole('heading', { name: 'Workshop · Fri 16 Oct, 09:30 UTC' }),
     ).toBeInTheDocument();
     await fillAndBook('  Ada Lovelace ', ' ada@example.com ');
 
@@ -240,7 +240,7 @@ describe('booking page, steps 3 and 4: details and done', () => {
     });
     expect(screen.getByText('4. Done')).toHaveAttribute('aria-current', 'step');
     expect(screen.getByText('Workshop')).toBeInTheDocument();
-    expect(screen.getByText('Fri, Oct 16, 09:30–10:30 UTC')).toBeInTheDocument();
+    expect(screen.getByText('Fri 16 Oct, 09:30–10:30 UTC')).toBeInTheDocument();
     expect(
       screen.getByText("The Owner will see this call in their list. There's nothing else to do."),
     ).toBeInTheDocument();
