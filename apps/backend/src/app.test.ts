@@ -97,3 +97,65 @@ describe('event types', () => {
     expect(res.body).toMatchObject({ code: 'METHOD_NOT_ALLOWED', message: expect.any(String) });
   });
 });
+
+describe('slots', () => {
+  const workshop = { name: 'Workshop', description: '', durationMinutes: 60 };
+
+  async function createWorkshop(app: ReturnType<typeof testApp>) {
+    const res = await request(app).post('/api/event-types').send(workshop).expect(201);
+    return res.body.id as string;
+  }
+
+  it('returns the 14 days of the Booking Window in order, each with its starts in order', async () => {
+    const app = testApp();
+    const id = await createWorkshop(app);
+
+    const res = await request(app).get(`/api/event-types/${id}/slots`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.days.map((d: { date: string }) => d.date)).toEqual([
+      '2026-10-15',
+      '2026-10-16',
+      '2026-10-17',
+      '2026-10-18',
+      '2026-10-19',
+      '2026-10-20',
+      '2026-10-21',
+      '2026-10-22',
+      '2026-10-23',
+      '2026-10-24',
+      '2026-10-25',
+      '2026-10-26',
+      '2026-10-27',
+      '2026-10-28',
+    ]);
+    const tomorrow = res.body.days[1].starts;
+    expect(tomorrow).toHaveLength(33);
+    expect(tomorrow[0]).toEqual({ start: '2026-10-16T09:00:00.000Z', available: true });
+    expect(tomorrow[1]).toEqual({ start: '2026-10-16T09:15:00.000Z', available: true });
+    expect(tomorrow.at(-1)).toEqual({ start: '2026-10-16T17:00:00.000Z', available: true });
+  });
+
+  it('marks the starts already past today unavailable, using the injected clock', async () => {
+    const app = testApp();
+    const id = await createWorkshop(app);
+
+    const res = await request(app).get(`/api/event-types/${id}/slots`);
+
+    const today = res.body.days[0].starts;
+    expect(today.slice(3, 6)).toEqual([
+      { start: '2026-10-15T09:45:00.000Z', available: false },
+      { start: '2026-10-15T10:00:00.000Z', available: false },
+      { start: '2026-10-15T10:15:00.000Z', available: true },
+    ]);
+  });
+
+  it('returns 404 EVENT_TYPE_NOT_FOUND for an unknown id', async () => {
+    const res = await request(testApp()).get(
+      '/api/event-types/2c1f6a8e-3b4d-4e5f-8a9b-0c1d2e3f4a5b/slots',
+    );
+
+    expect(res.status).toBe(404);
+    expect(res.body).toMatchObject({ code: 'EVENT_TYPE_NOT_FOUND', message: expect.any(String) });
+  });
+});

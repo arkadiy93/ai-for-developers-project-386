@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { ApiError, EventType } from '@/lib/api';
+import type { ApiError, EventType, Slots } from '@/lib/api';
 
 type Handler = (request: Request) => Response | Promise<Response>;
 
@@ -53,4 +53,32 @@ export const workshop: EventType = {
   name: 'Workshop',
   description: 'A long working session.',
   durationMinutes: 60,
+};
+
+/** The free times of `workshop`: today is full, tomorrow has two free starts, the day after has one. */
+export const workshopSlots: Slots = {
+  days: [
+    {
+      date: '2026-10-15',
+      starts: [
+        { start: '2026-10-15T09:00:00.000Z', available: false },
+        { start: '2026-10-15T09:15:00.000Z', available: false },
+      ],
+    },
+    {
+      date: '2026-10-16',
+      starts: [
+        { start: '2026-10-16T09:00:00.000Z', available: true },
+        { start: '2026-10-16T09:15:00.000Z', available: false },
+        { start: '2026-10-16T09:30:00.000Z', available: true },
+      ],
+    },
+    {
+      date: '2026-10-17',
+      starts: [
+        { start: '2026-10-17T09:00:00.000Z', available: false },
+        { start: '2026-10-17T09:15:00.000Z', available: true },
+      ],
+    },
+  ],
 };

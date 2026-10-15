@@ -22,6 +22,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/event-types/{id}/slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every start of the Event Type in the Booking Window, each marked available or not. */
+        get: operations["EventTypes_slots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -67,6 +84,26 @@ export interface components {
              * @description The length of the call. Must be a multiple of 15.
              */
             durationMinutes: number;
+        };
+        /** @description One day of the Booking Window, with every quarter-hour start whose call ends by 18:00 UTC. */
+        SlotDay: {
+            /** Format: date */
+            date: string;
+            starts: components["schemas"]["SlotStart"][];
+        };
+        /** @description One possible start time for an Event Type. */
+        SlotStart: {
+            /**
+             * Format: date-time
+             * @description Serialised exactly like `Date#toISOString()`.
+             */
+            start: string;
+            /** @description False when the start is past or the call would overlap a Booking. */
+            available: boolean;
+        };
+        /** @description The 14 days of the Booking Window, starting today in UTC. */
+        Slots: {
+            days: components["schemas"]["SlotDay"][];
         };
     };
     responses: never;
@@ -121,6 +158,37 @@ export interface operations {
             };
             /** @description The server could not understand the request due to invalid syntax. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    EventTypes_slots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Slots"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -47,6 +47,31 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EventTypeInput'
+  /event-types/{id}/slots:
+    get:
+      operationId: EventTypes_slots
+      description: Every start of the Event Type in the Booking Window, each marked available or not.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Slots'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Event Types
 components:
   schemas:
     Error:
@@ -128,6 +153,44 @@ components:
           maximum: 540
           description: The length of the call. Must be a multiple of 15.
       description: The fields of an Event Type that the Owner sets.
+    SlotDay:
+      type: object
+      required:
+        - date
+        - starts
+      properties:
+        date:
+          type: string
+          format: date
+        starts:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlotStart'
+      description: One day of the Booking Window, with every quarter-hour start whose call ends by 18:00 UTC.
+    SlotStart:
+      type: object
+      required:
+        - start
+        - available
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Serialised exactly like `Date#toISOString()`.
+        available:
+          type: boolean
+          description: False when the start is past or the call would overlap a Booking.
+      description: One possible start time for an Event Type.
+    Slots:
+      type: object
+      required:
+        - days
+      properties:
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlotDay'
+      description: The 14 days of the Booking Window, starting today in UTC.
 servers:
   - url: /api
     description: Call Calendar API

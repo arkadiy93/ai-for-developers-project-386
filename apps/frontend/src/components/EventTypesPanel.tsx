@@ -31,13 +31,13 @@ export function EventTypesPanel() {
 
       {state.status === 'ready' && (
         <>
-          {state.eventTypes.length === 0 ? (
+          {state.data.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               None yet. Guests see an empty booking page.
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {state.eventTypes.map((eventType) => (
+              {state.data.map((eventType) => (
                 <li
                   key={eventType.id}
                   className="bg-card ring-foreground/10 flex items-baseline justify-between gap-2 rounded-xl p-3 text-sm ring-1"
