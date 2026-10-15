@@ -5,13 +5,18 @@ import type { ApiError, EventType } from '@/lib/api';
 import { deepDive, intro, json, pending, serverError, stubApi, workshop } from '@/test/api';
 import { renderAt } from '@/test/render';
 
+/** Stubs the Event Type routes, plus an empty Bookings list so the main column stays quiet. */
+function stubAdminApi(routes: Parameters<typeof stubApi>[0]) {
+  return stubApi({ 'GET /api/bookings': () => json([]), ...routes });
+}
+
 async function findPanel() {
   return screen.findByRole('region', { name: 'Event types' });
 }
 
 describe('admin event types panel', () => {
   it('shows a card with the name and duration of each event type', async () => {
-    stubApi({ 'GET /api/event-types': () => json([deepDive, intro]) });
+    stubAdminApi({ 'GET /api/event-types': () => json([deepDive, intro]) });
     renderAt('/admin');
 
     const list = within(await findPanel()).getByRole('list');
@@ -24,7 +29,7 @@ describe('admin event types panel', () => {
   });
 
   it('explains what an empty list means for Guests', async () => {
-    stubApi({ 'GET /api/event-types': () => json([]) });
+    stubAdminApi({ 'GET /api/event-types': () => json([]) });
     renderAt('/admin');
 
     expect(
@@ -33,7 +38,7 @@ describe('admin event types panel', () => {
   });
 
   it('shows placeholders while the event types load', async () => {
-    stubApi({ 'GET /api/event-types': pending });
+    stubAdminApi({ 'GET /api/event-types': pending });
     renderAt('/admin');
 
     expect(
@@ -43,7 +48,7 @@ describe('admin event types panel', () => {
 
   it('shows an error with Retry when loading fails, and loads again on Retry', async () => {
     let fail = true;
-    stubApi({
+    stubAdminApi({
       'GET /api/event-types': () => (fail ? json(serverError, 500) : json([intro])),
     });
     renderAt('/admin');
@@ -62,7 +67,7 @@ describe('admin: creating an event type', () => {
   it('creates an event type from the inline form and shows it in name order', async () => {
     let eventTypes: EventType[] = [deepDive, workshop];
     let posted: unknown;
-    stubApi({
+    stubAdminApi({
       'GET /api/event-types': () => json(eventTypes),
       'POST /api/event-types': async (request) => {
         posted = await request.json();
@@ -95,7 +100,7 @@ describe('admin: creating an event type', () => {
   });
 
   it('offers durations from 15 min to 9 h in steps of 15', async () => {
-    stubApi({ 'GET /api/event-types': () => json([]) });
+    stubAdminApi({ 'GET /api/event-types': () => json([]) });
     renderAt('/admin');
     const panel = await findPanel();
 
@@ -118,7 +123,7 @@ describe('admin: creating an event type', () => {
         { path: '/description', message: 'must NOT have more than 500 characters' },
       ],
     };
-    stubApi({
+    stubAdminApi({
       'GET /api/event-types': () => json([]),
       'POST /api/event-types': () => json(error, 400),
     });
@@ -138,7 +143,7 @@ describe('admin: creating an event type', () => {
   });
 
   it('collapses the form on Cancel without creating anything', async () => {
-    const fetch = stubApi({ 'GET /api/event-types': () => json([]) });
+    const fetch = stubAdminApi({ 'GET /api/event-types': () => json([]) });
     renderAt('/admin');
     const panel = await findPanel();
 
@@ -152,7 +157,7 @@ describe('admin: creating an event type', () => {
   });
 
   it('keeps the form open with a message when creating fails for another reason', async () => {
-    stubApi({
+    stubAdminApi({
       'GET /api/event-types': () => json([]),
       'POST /api/event-types': () => json(serverError, 500),
     });
@@ -175,7 +180,7 @@ describe('admin: editing an event type', () => {
     let eventTypes: EventType[] = [deepDive, intro, workshop];
     let put: { url: string; body: unknown } | undefined;
     const renamed: EventType = { ...intro, name: 'Zoom chat', durationMinutes: 45 };
-    stubApi({
+    stubAdminApi({
       'GET /api/event-types': () => json(eventTypes),
       [`PUT /api/event-types/${intro.id}`]: async (request) => {
         put = { url: request.url, body: await request.json() };
@@ -220,7 +225,7 @@ describe('admin: editing an event type', () => {
       message: 'request/body has invalid fields',
       details: [{ path: '/name', message: 'must not be blank' }],
     };
-    stubApi({
+    stubAdminApi({
       'GET /api/event-types': () => json([intro]),
       [`PUT /api/event-types/${intro.id}`]: () => json(error, 400),
     });
@@ -241,7 +246,7 @@ describe('admin: editing an event type', () => {
   it('collapses the card and refetches the list when the event type was deleted elsewhere', async () => {
     let eventTypes: EventType[] = [deepDive, intro];
     const notFound: ApiError = { code: 'EVENT_TYPE_NOT_FOUND', message: 'event type not found' };
-    stubApi({
+    stubAdminApi({
       'GET /api/event-types': () => json(eventTypes),
       [`PUT /api/event-types/${intro.id}`]: () => {
         eventTypes = [deepDive];
@@ -269,7 +274,7 @@ describe('admin: deleting an event type', () => {
   }
 
   it('asks for confirmation, and Cancel closes the dialog without deleting', async () => {
-    const fetch = stubApi({ 'GET /api/event-types': () => json([intro]) });
+    const fetch = stubAdminApi({ 'GET /api/event-types': () => json([intro]) });
     renderAt('/admin');
 
     const { panel, dialog } = await openDeleteDialog();
@@ -292,7 +297,7 @@ describe('admin: deleting an event type', () => {
     ],
   ])('%s and the card disappears', async (_case, respond) => {
     let eventTypes: EventType[] = [deepDive, intro];
-    stubApi({
+    stubAdminApi({
       'GET /api/event-types': () => json(eventTypes),
       [`DELETE /api/event-types/${intro.id}`]: () => {
         eventTypes = [deepDive];
@@ -311,7 +316,7 @@ describe('admin: deleting an event type', () => {
   });
 
   it('keeps the dialog open with a message when deleting fails for another reason', async () => {
-    stubApi({
+    stubAdminApi({
       'GET /api/event-types': () => json([intro]),
       [`DELETE /api/event-types/${intro.id}`]: () => json(serverError, 500),
     });

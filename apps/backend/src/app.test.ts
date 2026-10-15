@@ -246,15 +246,23 @@ describe('slots', () => {
   });
 });
 
+const workshop = { name: 'Workshop', description: '', durationMinutes: 60 };
+const guest = { guestName: 'Ada Lovelace', guestEmail: 'ada@example.com' };
+
+async function createEventType(app: ReturnType<typeof createApp>, fields = workshop) {
+  const res = await request(app).post('/api/event-types').send(fields).expect(201);
+  return res.body.id as string;
+}
+
+async function book(app: ReturnType<typeof createApp>, eventTypeId: string, start: string) {
+  const res = await request(app)
+    .post('/api/bookings')
+    .send({ eventTypeId, start, ...guest })
+    .expect(201);
+  return res.body as { id: string };
+}
+
 describe('booking a call', () => {
-  const workshop = { name: 'Workshop', description: '', durationMinutes: 60 };
-  const guest = { guestName: 'Ada Lovelace', guestEmail: 'ada@example.com' };
-
-  async function createEventType(app: ReturnType<typeof testApp>, fields = workshop) {
-    const res = await request(app).post('/api/event-types').send(fields).expect(201);
-    return res.body.id as string;
-  }
-
   it('returns 201 with the Booking, its Event Type name and end fixed at booking time', async () => {
     const app = testApp();
     const eventTypeId = await createEventType(app);
@@ -389,6 +397,30 @@ describe('booking a call', () => {
     expect(res.body).toMatchObject({ guestName: 'Ada', guestEmail: 'ada@example.com' });
   });
 
+  it('returns 409 SLOT_UNAVAILABLE for a start that no longer fits after a duration change', async () => {
+    const app = testApp();
+    const eventTypeId = await createEventType(app);
+    const isFree = async (start: string) => {
+      const res = await request(app).get(`/api/event-types/${eventTypeId}/slots`);
+      return res.body.days[1].starts.some(
+        (slot: { start: string; available: boolean }) => slot.start === start && slot.available,
+      );
+    };
+    expect(await isFree('2026-10-16T17:00:00.000Z')).toBe(true);
+
+    await request(app)
+      .put(`/api/event-types/${eventTypeId}`)
+      .send({ ...workshop, durationMinutes: 120 })
+      .expect(200);
+    const res = await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId, start: '2026-10-16T17:00:00.000Z', ...guest });
+
+    expect(await isFree('2026-10-16T17:00:00.000Z')).toBe(false);
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ code: 'SLOT_UNAVAILABLE' });
+  });
+
   it('returns 404 EVENT_TYPE_NOT_FOUND for an unknown Event Type, deleted, never created or malformed', async () => {
     const app = testApp();
     const deleted = await createEventType(app);
@@ -406,5 +438,84 @@ describe('booking a call', () => {
       expect(res.status).toBe(404);
       expect(res.body).toMatchObject({ code: 'EVENT_TYPE_NOT_FOUND', message: expect.any(String) });
     }
+  });
+});
+
+describe('listing upcoming bookings', () => {
+  it('lists only Bookings that have not ended, an in-progress one included, sorted by start', async () => {
+    let now = new Date('2026-10-15T09:00:00.000Z');
+    const app = createApp({ db: new DatabaseSync(':memory:'), now: () => now });
+    const eventTypeId = await createEventType(app);
+    const tomorrow = await book(app, eventTypeId, '2026-10-16T09:00:00.000Z');
+    const afternoon = await book(app, eventTypeId, '2026-10-15T14:00:00.000Z');
+    await book(app, eventTypeId, '2026-10-15T09:15:00.000Z');
+    const inProgress = await book(app, eventTypeId, '2026-10-15T11:30:00.000Z');
+    await book(app, eventTypeId, '2026-10-15T10:30:00.000Z');
+
+    // The 10:30 call ends exactly now, so it has ended; the 11:30 one is in progress.
+    now = new Date('2026-10-15T11:30:00.000Z');
+    const res = await request(app).get('/api/bookings');
+
+    expect(res.status).toBe(200);
+    expect(res.body.map((b: { id: string }) => b.id)).toEqual([
+      inProgress.id,
+      afternoon.id,
+      tomorrow.id,
+    ]);
+    expect(res.body[0]).toEqual({
+      id: inProgress.id,
+      eventTypeId,
+      eventTypeName: 'Workshop',
+      start: '2026-10-15T11:30:00.000Z',
+      end: '2026-10-15T12:30:00.000Z',
+      ...guest,
+    });
+  });
+
+  it('keeps the old name and end after the Event Type is renamed and its duration changed', async () => {
+    const app = testApp();
+    const eventTypeId = await createEventType(app);
+    await book(app, eventTypeId, '2026-10-16T09:00:00.000Z');
+
+    await request(app)
+      .put(`/api/event-types/${eventTypeId}`)
+      .send({ name: 'Masterclass', description: '', durationMinutes: 120 })
+      .expect(200);
+    const res = await request(app).get('/api/bookings');
+
+    expect(res.body).toEqual([
+      expect.objectContaining({
+        eventTypeName: 'Workshop',
+        start: '2026-10-16T09:00:00.000Z',
+        end: '2026-10-16T10:00:00.000Z',
+      }),
+    ]);
+  });
+
+  it('still lists a Booking of a deleted Event Type, and its time stays taken for others', async () => {
+    const app = testApp();
+    const deleted = await createEventType(app);
+    const other = await createEventType(app, { ...workshop, name: 'Intro', durationMinutes: 15 });
+    await book(app, deleted, '2026-10-16T09:00:00.000Z');
+
+    await request(app).delete(`/api/event-types/${deleted}`).expect(204);
+    const list = await request(app).get('/api/bookings');
+    const slots = await request(app).get(`/api/event-types/${other}/slots`);
+    const rebook = await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId: other, start: '2026-10-16T09:30:00.000Z', ...guest });
+
+    expect(list.body).toEqual([
+      expect.objectContaining({ eventTypeId: deleted, eventTypeName: 'Workshop' }),
+    ]);
+    expect(slots.body.days[1].starts.slice(0, 5)).toEqual([
+      { start: '2026-10-16T09:00:00.000Z', available: false },
+      { start: '2026-10-16T09:15:00.000Z', available: false },
+      { start: '2026-10-16T09:30:00.000Z', available: false },
+      { start: '2026-10-16T09:45:00.000Z', available: false },
+      { start: '2026-10-16T10:00:00.000Z', available: true },
+    ]);
+    expect(rebook.status).toBe(409);
+    expect(rebook.body).toMatchObject({ code: 'SLOT_UNAVAILABLE' });
   });
 });

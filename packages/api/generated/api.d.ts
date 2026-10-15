@@ -11,7 +11,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * @description Every Booking that hasn't ended yet, so a call in progress stays until its end, sorted by
+         *     start. There is no paging.
+         */
+        get: operations["Bookings_list"];
         put?: never;
         /**
          * @description Books a free Slot. Any start that isn't a free Slot right now (taken by a Booking of any
@@ -196,6 +200,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    Bookings_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"][];
+                };
+            };
+        };
+    };
     Bookings_create: {
         parameters: {
             query?: never;
