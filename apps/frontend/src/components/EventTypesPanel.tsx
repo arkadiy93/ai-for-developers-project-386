@@ -1,8 +1,9 @@
 import { useId, useState } from 'react';
+import { EventTypeCard } from '@/components/EventTypeCard';
+import { EventTypeForm } from '@/components/EventTypeForm';
 import { LoadError } from '@/components/LoadError';
-import { NewEventTypeForm } from '@/components/NewEventTypeForm';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDuration } from '@/lib/duration';
+import { api } from '@/lib/api';
 import { useEventTypes } from '@/lib/use-event-types';
 
 /** The Admin side panel where the Owner manages Event Types. */
@@ -10,6 +11,7 @@ export function EventTypesPanel() {
   const headingId = useId();
   const { state, reload } = useEventTypes();
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string>();
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
@@ -38,22 +40,26 @@ export function EventTypesPanel() {
           ) : (
             <ul className="flex flex-col gap-2">
               {state.data.map((eventType) => (
-                <li
-                  key={eventType.id}
-                  className="bg-card ring-foreground/10 flex items-baseline justify-between gap-2 rounded-xl p-3 text-sm ring-1"
-                >
-                  <span className="font-medium">{eventType.name}</span>
-                  <span className="text-muted-foreground shrink-0">
-                    {formatDuration(eventType.durationMinutes)}
-                  </span>
+                <li key={eventType.id}>
+                  <EventTypeCard
+                    eventType={eventType}
+                    expanded={editingId === eventType.id}
+                    onExpand={() => setEditingId(eventType.id)}
+                    onCollapse={() => setEditingId(undefined)}
+                    onChanged={reload}
+                  />
                 </li>
               ))}
             </ul>
           )}
 
           {creating ? (
-            <NewEventTypeForm
-              onCreated={() => {
+            <EventTypeForm
+              label="New event type"
+              submitLabel="Create"
+              failedMessage="Couldn't create the event type. Please try again."
+              submit={(body) => api.POST('/event-types', { body })}
+              onSaved={() => {
                 setCreating(false);
                 reload();
               }}

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { ApiError, EventType } from '@/lib/api';
@@ -167,5 +167,161 @@ describe('admin: creating an event type', () => {
       "Couldn't create the event type. Please try again.",
     );
     expect(within(panel).getByLabelText('Name')).toHaveValue('Intro call');
+  });
+});
+
+describe('admin: editing an event type', () => {
+  it('expands a card into the prefilled form, saves, and shows the new values in name order', async () => {
+    let eventTypes: EventType[] = [deepDive, intro, workshop];
+    let put: { url: string; body: unknown } | undefined;
+    const renamed: EventType = { ...intro, name: 'Zoom chat', durationMinutes: 45 };
+    stubApi({
+      'GET /api/event-types': () => json(eventTypes),
+      [`PUT /api/event-types/${intro.id}`]: async (request) => {
+        put = { url: request.url, body: await request.json() };
+        eventTypes = [deepDive, workshop, renamed];
+        return json(renamed);
+      },
+    });
+    renderAt('/admin');
+    const panel = await findPanel();
+
+    await userEvent.click(await within(panel).findByRole('button', { name: /Intro call/ }));
+    const form = within(panel).getByRole('form', { name: 'Edit Intro call' });
+    expect(within(form).getByLabelText('Name')).toHaveValue('Intro call');
+    expect(within(form).getByLabelText('Description')).toHaveValue('A quick hello.');
+    expect(within(form).getByLabelText('Duration')).toHaveDisplayValue('15 min');
+    expect(form).toHaveTextContent(
+      'Changes apply to new bookings only. Calls already booked keep their time and name.',
+    );
+    await userEvent.clear(within(form).getByLabelText('Name'));
+    await userEvent.type(within(form).getByLabelText('Name'), 'Zoom chat');
+    await userEvent.selectOptions(within(form).getByLabelText('Duration'), '45 min');
+    await userEvent.click(within(form).getByRole('button', { name: 'Save' }));
+
+    expect(put?.body).toEqual({
+      name: 'Zoom chat',
+      description: 'A quick hello.',
+      durationMinutes: 45,
+    });
+    expect(await within(panel).findByText('Zoom chat')).toBeInTheDocument();
+    expect(within(panel).queryByRole('form')).not.toBeInTheDocument();
+    const items = within(within(panel).getByRole('list')).getAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Deep dive'),
+      expect.stringContaining('Workshop'),
+      expect.stringContaining('Zoom chat45 min'),
+    ]);
+  });
+
+  it('shows server validation messages under their fields and keeps the card open', async () => {
+    const error: ApiError = {
+      code: 'VALIDATION_ERROR',
+      message: 'request/body has invalid fields',
+      details: [{ path: '/name', message: 'must not be blank' }],
+    };
+    stubApi({
+      'GET /api/event-types': () => json([intro]),
+      [`PUT /api/event-types/${intro.id}`]: () => json(error, 400),
+    });
+    renderAt('/admin');
+    const panel = await findPanel();
+
+    await userEvent.click(await within(panel).findByRole('button', { name: /Intro call/ }));
+    const form = within(panel).getByRole('form', { name: 'Edit Intro call' });
+    await userEvent.clear(within(form).getByLabelText('Name'));
+    await userEvent.type(within(form).getByLabelText('Name'), '   ');
+    await userEvent.click(within(form).getByRole('button', { name: 'Save' }));
+
+    expect(await within(form).findByText('must not be blank')).toBeInTheDocument();
+    expect(within(form).getByLabelText('Name')).toHaveAccessibleDescription('must not be blank');
+    expect(within(form).getByLabelText('Duration')).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('collapses the card and refetches the list when the event type was deleted elsewhere', async () => {
+    let eventTypes: EventType[] = [deepDive, intro];
+    const notFound: ApiError = { code: 'EVENT_TYPE_NOT_FOUND', message: 'event type not found' };
+    stubApi({
+      'GET /api/event-types': () => json(eventTypes),
+      [`PUT /api/event-types/${intro.id}`]: () => {
+        eventTypes = [deepDive];
+        return json(notFound, 404);
+      },
+    });
+    renderAt('/admin');
+    const panel = await findPanel();
+
+    await userEvent.click(await within(panel).findByRole('button', { name: /Intro call/ }));
+    await userEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(within(panel).queryByText('Intro call')).not.toBeInTheDocument());
+    expect(within(panel).queryByRole('form')).not.toBeInTheDocument();
+    expect(within(panel).getByText('Deep dive')).toBeInTheDocument();
+  });
+});
+
+describe('admin: deleting an event type', () => {
+  async function openDeleteDialog() {
+    const panel = await findPanel();
+    await userEvent.click(await within(panel).findByRole('button', { name: /Intro call/ }));
+    await userEvent.click(within(panel).getByRole('button', { name: 'Delete this event type' }));
+    return { panel, dialog: await screen.findByRole('alertdialog') };
+  }
+
+  it('asks for confirmation, and Cancel closes the dialog without deleting', async () => {
+    const fetch = stubApi({ 'GET /api/event-types': () => json([intro]) });
+    renderAt('/admin');
+
+    const { panel, dialog } = await openDeleteDialog();
+    expect(dialog).toHaveAccessibleName('Delete Intro call?');
+    expect(dialog).toHaveAccessibleDescription(
+      "Guests won't be able to book it anymore. Existing Bookings stay.",
+    );
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(within(panel).getByRole('form', { name: 'Edit Intro call' })).toBeInTheDocument();
+    expect(fetch.mock.calls.every(([request]) => request.method === 'GET')).toBe(true);
+  });
+
+  it.each([
+    ['deletes it', () => new Response(null, { status: 204 })],
+    [
+      'treats a 404 as already deleted',
+      () => json({ code: 'EVENT_TYPE_NOT_FOUND', message: 'event type not found' }, 404),
+    ],
+  ])('%s and the card disappears', async (_case, respond) => {
+    let eventTypes: EventType[] = [deepDive, intro];
+    stubApi({
+      'GET /api/event-types': () => json(eventTypes),
+      [`DELETE /api/event-types/${intro.id}`]: () => {
+        eventTypes = [deepDive];
+        return respond();
+      },
+    });
+    renderAt('/admin');
+
+    const { panel, dialog } = await openDeleteDialog();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(within(panel).queryByText('Intro call')).not.toBeInTheDocument());
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('form')).not.toBeInTheDocument();
+    expect(within(panel).getByText('Deep dive')).toBeInTheDocument();
+  });
+
+  it('keeps the dialog open with a message when deleting fails for another reason', async () => {
+    stubApi({
+      'GET /api/event-types': () => json([intro]),
+      [`DELETE /api/event-types/${intro.id}`]: () => json(serverError, 500),
+    });
+    renderAt('/admin');
+
+    const { dialog } = await openDeleteDialog();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      "Couldn't delete the event type. Please try again.",
+    );
   });
 });

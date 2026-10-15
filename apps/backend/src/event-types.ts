@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { components } from '@calendar/api';
-import { Router } from 'express';
+import { type NextFunction, Router } from 'express';
 import type { HttpError } from './errors.js';
 import { computeSlots } from './slots.js';
 import type { Store } from './store.js';
@@ -20,6 +20,30 @@ function validate({ name, durationMinutes }: EventTypeInput): ErrorDetail[] {
   return details;
 }
 
+// The trimmed fields to save, or undefined after passing a 400 to `next`.
+function parseInput(input: EventTypeInput, next: NextFunction): EventTypeInput | undefined {
+  const details = validate(input);
+  if (details.length > 0) {
+    next({
+      status: 400,
+      message: 'request/body has invalid fields',
+      errors: details,
+    } satisfies HttpError);
+    return undefined;
+  }
+  return {
+    name: input.name.trim(),
+    description: input.description.trim(),
+    durationMinutes: input.durationMinutes,
+  };
+}
+
+const eventTypeNotFound: HttpError = {
+  status: 404,
+  code: 'EVENT_TYPE_NOT_FOUND',
+  message: 'event type not found',
+};
+
 export function eventTypesRouter(store: Store, now: () => Date) {
   const router = Router();
 
@@ -28,36 +52,38 @@ export function eventTypesRouter(store: Store, now: () => Date) {
   });
 
   router.post('/event-types', (req, res, next) => {
-    const input = req.body as EventTypeInput;
-    const details = validate(input);
-    if (details.length > 0) {
-      next({
-        status: 400,
-        message: 'request/body has invalid fields',
-        errors: details,
-      } satisfies HttpError);
-      return;
-    }
+    const fields = parseInput(req.body as EventTypeInput, next);
+    if (!fields) return;
 
-    const eventType = {
-      id: randomUUID(),
-      name: input.name.trim(),
-      description: input.description.trim(),
-      durationMinutes: input.durationMinutes,
-    };
-
+    const eventType = { id: randomUUID(), ...fields };
     store.saveEventType(eventType);
     res.status(201).json(eventType);
+  });
+
+  router.put('/event-types/:id', (req, res, next) => {
+    const fields = parseInput(req.body as EventTypeInput, next);
+    if (!fields) return;
+
+    const eventType = { id: req.params.id, ...fields };
+    if (!store.updateEventType(eventType)) {
+      next(eventTypeNotFound);
+      return;
+    }
+    res.json(eventType);
+  });
+
+  router.delete('/event-types/:id', (req, res, next) => {
+    if (!store.deleteEventType(req.params.id)) {
+      next(eventTypeNotFound);
+      return;
+    }
+    res.status(204).end();
   });
 
   router.get('/event-types/:id/slots', (req, res, next) => {
     const eventType = store.getEventType(req.params.id);
     if (!eventType) {
-      next({
-        status: 404,
-        code: 'EVENT_TYPE_NOT_FOUND',
-        message: 'event type not found',
-      } satisfies HttpError);
+      next(eventTypeNotFound);
       return;
     }
 

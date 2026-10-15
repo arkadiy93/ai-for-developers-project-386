@@ -88,6 +88,30 @@ namespace EventTypes {
     @body body: Error;
   };
 
+  /**
+   * Replaces the Event Type's fields, with the same rules as create. The id never changes.
+   * Existing Bookings keep their own name and time (ADR 0004).
+   */
+  @route("/{id}")
+  @put
+  op update(@path id: string, @body body: EventTypeInput): EventType | {
+    @statusCode statusCode: 400;
+    @body body: Error;
+  } | {
+    @statusCode statusCode: 404;
+    @body body: Error;
+  };
+
+  /** Hard-deletes the Event Type. Its Bookings remain (ADR 0004). An unknown id is a 404. */
+  @route("/{id}")
+  @delete
+  op delete(@path id: string): {
+    @statusCode statusCode: 204;
+  } | {
+    @statusCode statusCode: 404;
+    @body body: Error;
+  };
+
   /** Every start of the Event Type in the Booking Window, each marked available or not. */
   @route("/{id}/slots")
   @get
