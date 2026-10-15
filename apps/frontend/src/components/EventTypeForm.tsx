@@ -4,14 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
-import { api, type EventTypeInput } from '@/lib/api';
+import type { ApiError, EventTypeInput } from '@/lib/api';
 import { durations, formatDuration } from '@/lib/duration';
 
 type Field = keyof EventTypeInput;
 type FieldErrors = Partial<Record<Field, string>>;
 
 const fields: Field[] = ['name', 'description', 'durationMinutes'];
-const failed = "Couldn't create the event type. Please try again.";
 
 // Paths are JSON pointers into the body, for example `/name`. Undefined if any isn't a form field.
 function toFieldErrors(details: { path: string; message: string }[]): FieldErrors | undefined {
@@ -24,16 +23,44 @@ function toFieldErrors(details: { path: string; message: string }[]): FieldError
   return errors;
 }
 
-interface NewEventTypeFormProps {
-  onCreated: () => void;
-  onCancel: () => void;
+/** What `submit` resolves to: openapi-fetch's result, narrowed to what the form reads. */
+export interface SubmitResult {
+  data?: unknown;
+  error?: ApiError;
+  response: Response;
 }
 
-/** The inline form behind the "+ New event type" card. */
-export function NewEventTypeForm({ onCreated, onCancel }: NewEventTypeFormProps) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState(30);
+interface EventTypeFormProps {
+  /** The form's accessible name, for example "New event type". */
+  label: string;
+  submitLabel: string;
+  /** Shown when the request fails for a reason other than field errors or a 404. */
+  failedMessage: string;
+  initial?: EventTypeInput;
+  submit: (body: EventTypeInput) => Promise<SubmitResult>;
+  onSaved: () => void;
+  /** Called on a 404, when the Event Type was deleted elsewhere. */
+  onNotFound?: () => void;
+  onCancel: () => void;
+  /** Rendered between the fields and the buttons. */
+  children?: ReactNode;
+}
+
+/** The inline form for creating or editing an Event Type. */
+export function EventTypeForm({
+  label,
+  submitLabel,
+  failedMessage,
+  initial = { name: '', description: '', durationMinutes: 30 },
+  submit,
+  onSaved,
+  onNotFound,
+  onCancel,
+  children,
+}: EventTypeFormProps) {
+  const [name, setName] = useState(initial.name);
+  const [description, setDescription] = useState(initial.description);
+  const [durationMinutes, setDurationMinutes] = useState(initial.durationMinutes);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
@@ -44,21 +71,23 @@ export function NewEventTypeForm({ onCreated, onCancel }: NewEventTypeFormProps)
     setFieldErrors({});
     setFormError(undefined);
     try {
-      const { data, error } = await api.POST('/event-types', {
-        body: { name, description, durationMinutes },
-      });
+      const { data, error, response } = await submit({ name, description, durationMinutes });
       if (data) {
-        onCreated();
+        onSaved();
+        return;
+      }
+      if (response.status === 404 && onNotFound) {
+        onNotFound();
         return;
       }
       const errors = error?.details?.length ? toFieldErrors(error.details) : undefined;
       if (errors) {
         setFieldErrors(errors);
       } else {
-        setFormError(failed);
+        setFormError(failedMessage);
       }
     } catch {
-      setFormError(failed);
+      setFormError(failedMessage);
     } finally {
       setSubmitting(false);
     }
@@ -67,7 +96,7 @@ export function NewEventTypeForm({ onCreated, onCancel }: NewEventTypeFormProps)
   return (
     <form
       onSubmit={handleSubmit}
-      aria-label="New event type"
+      aria-label={label}
       className="ring-foreground/10 flex flex-col gap-3 rounded-xl p-3 ring-1"
     >
       <Field label="Name" error={fieldErrors.name}>
@@ -107,6 +136,7 @@ export function NewEventTypeForm({ onCreated, onCancel }: NewEventTypeFormProps)
           </NativeSelect>
         )}
       </Field>
+      {children}
       {formError && (
         <p role="alert" className="text-destructive text-sm">
           {formError}
@@ -117,7 +147,7 @@ export function NewEventTypeForm({ onCreated, onCancel }: NewEventTypeFormProps)
           Cancel
         </Button>
         <Button type="submit" disabled={submitting}>
-          Create
+          {submitLabel}
         </Button>
       </div>
     </form>

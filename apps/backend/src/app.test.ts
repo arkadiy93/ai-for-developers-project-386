@@ -3,6 +3,9 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 
+/** A well-formed id that no Event Type has. */
+const unknownId = '2c1f6a8e-3b4d-4e5f-8a9b-0c1d2e3f4a5b';
+
 function testApp() {
   return createApp({
     db: new DatabaseSync(':memory:'),
@@ -98,6 +101,91 @@ describe('event types', () => {
   });
 });
 
+describe('updating an event type', () => {
+  const intro = { name: 'Intro call', description: 'A quick hello.', durationMinutes: 15 };
+  const workshop = { name: 'Workshop', description: '', durationMinutes: 60 };
+
+  it('replaces the fields, keeps the id, and the list reflects it in name order', async () => {
+    const app = testApp();
+    const { body: created } = await request(app).post('/api/event-types').send(intro).expect(201);
+    await request(app).post('/api/event-types').send(workshop).expect(201);
+
+    const res = await request(app)
+      .put(`/api/event-types/${created.id}`)
+      .send({ name: ' Zoom chat ', description: ' Longer. ', durationMinutes: 45 });
+    const list = await request(app).get('/api/event-types');
+
+    const updated = {
+      id: created.id,
+      name: 'Zoom chat',
+      description: 'Longer.',
+      durationMinutes: 45,
+    };
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(updated);
+    expect(list.body).toEqual([{ id: expect.any(String), ...workshop }, updated]);
+  });
+
+  it.each([
+    ['a whitespace-only name', { name: '   ' }, '/name'],
+    ['a duration that is not a multiple of 15', { durationMinutes: 20 }, '/durationMinutes'],
+    ['an over-long description', { description: 'x'.repeat(501) }, '/description'],
+  ])('rejects %s with a 400 on that field and changes nothing', async (_case, override, path) => {
+    const app = testApp();
+    const { body: created } = await request(app).post('/api/event-types').send(intro).expect(201);
+
+    const res = await request(app)
+      .put(`/api/event-types/${created.id}`)
+      .send({ ...intro, ...override });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      details: [{ path, message: expect.any(String) }],
+    });
+    expect((await request(app).get('/api/event-types')).body).toEqual([created]);
+  });
+
+  it('returns 404 EVENT_TYPE_NOT_FOUND for an unknown id', async () => {
+    const res = await request(testApp()).put(`/api/event-types/${unknownId}`).send(intro);
+
+    expect(res.status).toBe(404);
+    expect(res.body).toMatchObject({ code: 'EVENT_TYPE_NOT_FOUND', message: expect.any(String) });
+  });
+});
+
+describe('deleting an event type', () => {
+  const intro = { name: 'Intro call', description: 'A quick hello.', durationMinutes: 15 };
+
+  it('removes it from the list', async () => {
+    const app = testApp();
+    const { body: created } = await request(app).post('/api/event-types').send(intro).expect(201);
+
+    const res = await request(app).delete(`/api/event-types/${created.id}`);
+
+    expect(res.status).toBe(204);
+    expect((await request(app).get('/api/event-types')).body).toEqual([]);
+  });
+
+  it('returns 404 EVENT_TYPE_NOT_FOUND for an unknown id', async () => {
+    const res = await request(testApp()).delete(`/api/event-types/${unknownId}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body).toMatchObject({ code: 'EVENT_TYPE_NOT_FOUND', message: expect.any(String) });
+  });
+
+  it('returns 404 for a second delete', async () => {
+    const app = testApp();
+    const { body: created } = await request(app).post('/api/event-types').send(intro).expect(201);
+    await request(app).delete(`/api/event-types/${created.id}`).expect(204);
+
+    const res = await request(app).delete(`/api/event-types/${created.id}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body).toMatchObject({ code: 'EVENT_TYPE_NOT_FOUND' });
+  });
+});
+
 describe('slots', () => {
   const workshop = { name: 'Workshop', description: '', durationMinutes: 60 };
 
@@ -151,9 +239,7 @@ describe('slots', () => {
   });
 
   it('returns 404 EVENT_TYPE_NOT_FOUND for an unknown id', async () => {
-    const res = await request(testApp()).get(
-      '/api/event-types/2c1f6a8e-3b4d-4e5f-8a9b-0c1d2e3f4a5b/slots',
-    );
+    const res = await request(testApp()).get(`/api/event-types/${unknownId}/slots`);
 
     expect(res.status).toBe(404);
     expect(res.body).toMatchObject({ code: 'EVENT_TYPE_NOT_FOUND', message: expect.any(String) });

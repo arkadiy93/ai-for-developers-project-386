@@ -26,6 +26,12 @@ export function createStore(db: DatabaseSync) {
     `INSERT INTO event_types (id, name, description, duration_minutes)
      VALUES (:id, :name, :description, :durationMinutes)`,
   );
+  const updateEventType = db.prepare(
+    `UPDATE event_types
+     SET name = :name, description = :description, duration_minutes = :durationMinutes
+     WHERE id = :id`,
+  );
+  const deleteEventType = db.prepare(`DELETE FROM event_types WHERE id = ?`);
 
   return {
     listEventTypes(): EventType[] {
@@ -38,6 +44,16 @@ export function createStore(db: DatabaseSync) {
 
     saveEventType(eventType: EventType) {
       insertEventType.run(eventType);
+    },
+
+    /** False when there is no Event Type with that id. */
+    updateEventType(eventType: EventType): boolean {
+      return updateEventType.run(eventType).changes > 0;
+    },
+
+    /** False when there is no Event Type with that id. Its Bookings remain (ADR 0004). */
+    deleteEventType(id: string): boolean {
+      return deleteEventType.run(id).changes > 0;
     },
 
     listBookingsEndingAfter(after: Date): BookedTime[] {

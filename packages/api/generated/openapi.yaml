@@ -47,6 +47,65 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EventTypeInput'
+  /event-types/{id}:
+    put:
+      operationId: EventTypes_update
+      description: |-
+        Replaces the Event Type's fields, with the same rules as create. The id never changes.
+        Existing Bookings keep their own name and time (ADR 0004).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Event Types
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTypeInput'
+    delete:
+      operationId: EventTypes_delete
+      description: Hard-deletes the Event Type. Its Bookings remain (ADR 0004). An unknown id is a 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Event Types
   /event-types/{id}/slots:
     get:
       operationId: EventTypes_slots
