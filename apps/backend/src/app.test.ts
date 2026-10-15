@@ -18,3 +18,14 @@ describe('unknown /api route', () => {
     expect(res.body).toMatchObject({ code: 'NOT_FOUND', message: expect.any(String) });
   });
 });
+
+describe('malformed request', () => {
+  it('answers a too-large body with a 400 VALIDATION_ERROR, not a server error', async () => {
+    const res = await request(testApp())
+      .post('/api/unknown')
+      .send({ padding: 'x'.repeat(200_000) });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+});
