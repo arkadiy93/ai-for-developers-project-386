@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents working with code in this reposi
 
 ## Project
 
-Hexlet course project "Календарь звонков": a calendar call-booking service, built together with AI. It is a pnpm workspaces monorepo (Node 22+, pnpm 9, TypeScript 7, ESM throughout) with two packages: `apps/backend` and `apps/frontend`. The UI text and README are in Russian.
+Hexlet course project "Календарь звонков": a calendar call-booking service, built together with AI. It is a pnpm workspaces monorepo (Node 22+, pnpm 9, TypeScript 7, ESM throughout) with two packages: `apps/backend` and `apps/frontend`. The UI text is in English; the README is in Russian.
 
 Do not delete, edit, or rename `.github/workflows/hexlet-check.yml`. Hexlet's automated grading depends on it.
 
