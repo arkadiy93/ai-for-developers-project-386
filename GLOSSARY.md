@@ -25,11 +25,11 @@ A kind of call the Owner offers, with an id, a name, a description and a duratio
 _Avoid_: Event, meeting type, service, call type
 
 **Working Hours**:
-The fixed daily time, 09:00 to 18:00, when the Owner takes calls.
+The fixed daily time, 09:00 to 18:00 UTC, when the Owner takes calls. All times in the app are in UTC.
 _Avoid_: Availability, open hours, schedule, business hours
 
 **Booking Window**:
-The 14 days, starting today, in which a Guest can book.
+The 14 days, starting today in UTC, in which a Guest can book.
 _Avoid_: Booking horizon, range, period
 
 **Slot**:
@@ -37,5 +37,5 @@ A start time for one Event Type: on the quarter hour, inside Working Hours and t
 _Avoid_: Time slot, opening, free time
 
 **Booking**:
-A Guest's call of one Event Type at a Slot. No two Bookings overlap, whatever their Event Types.
+A Guest's call of one Event Type at a Slot. No two Bookings overlap, whatever their Event Types. A Booking is final: nobody cancels or moves it. It keeps the Event Type's name and its own start and end as they were when booked, so later changes to the Event Type never touch it.
 _Avoid_: Appointment, meeting, reservation, event
