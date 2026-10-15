@@ -12,7 +12,7 @@ The app needs a main page that introduces the service and leads Guests to bookin
 
 ## Decision
 
-The main page describes the service, not the Owner. Its text is static: a heading, one sentence saying a Guest can book a 15- or 30-minute call without signing up, and a "Book a call" button to the booking page. The page makes no backend calls.
+The main page describes the service, not the Owner. Its text is static: a heading, one sentence saying a Guest picks an Event Type and a free Slot in the next 14 days without signing up, and a "Book a call" button to the booking page. The page makes no backend calls.
 
 ## Consequences
 
