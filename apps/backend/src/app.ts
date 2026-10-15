@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import express from 'express';
 import * as OpenApiValidator from 'express-openapi-validator';
 import { errorHandler, notFoundHandler } from './errors.js';
+import { eventTypesRouter } from './event-types.js';
 import { createStore } from './store.js';
 
 const apiSpec = createRequire(import.meta.url).resolve('@calendar/api/openapi.yaml');
@@ -14,7 +15,7 @@ export interface AppDeps {
 }
 
 export function createApp({ db }: AppDeps) {
-  createStore(db);
+  const store = createStore(db);
 
   const app = express();
 
@@ -26,6 +27,8 @@ export function createApp({ db }: AppDeps) {
       validateResponses: true,
     }),
   );
+
+  app.use('/api', eventTypesRouter(store));
 
   // A documented route with no handler yet still answers with the envelope.
   app.use(notFoundHandler);

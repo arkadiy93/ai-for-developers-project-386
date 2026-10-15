@@ -1,4 +1,4 @@
-import type { paths } from '@calendar/api';
+import type { components, paths } from '@calendar/api';
 import createClient from 'openapi-fetch';
 
 export const api = createClient<paths>({
@@ -7,3 +7,7 @@ export const api = createClient<paths>({
   // Looked up per request, so tests can stub fetch after this module loads.
   fetch: (request) => globalThis.fetch(request),
 });
+
+export type EventType = components['schemas']['EventType'];
+export type EventTypeInput = components['schemas']['EventTypeInput'];
+export type ApiError = components['schemas']['Error'];
