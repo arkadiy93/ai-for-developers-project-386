@@ -20,7 +20,7 @@ export function bookingsRouter(store: Store, now: () => Date) {
   const router = Router();
 
   router.get('/bookings', (_req, res) => {
-    res.json(store.listBookingsEndingAfter(now()));
+    res.json(store.listUpcomingBookings(now()));
   });
 
   router.post('/bookings', (req, res, next) => {
