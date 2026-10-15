@@ -17,7 +17,7 @@ Single-context repo: one glossary and one ADR folder at the root, shared by `app
 /
 ├── GLOSSARY.md
 ├── docs/adr/
-│   ├── 0001-slot-booking-model.md
+│   ├── 0001-generic-main-page.md
 │   └── 0002-...
 └── apps/
     ├── backend/

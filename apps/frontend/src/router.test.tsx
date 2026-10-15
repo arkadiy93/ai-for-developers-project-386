@@ -16,7 +16,7 @@ describe('home page', () => {
 
     const main = await screen.findByRole('main');
     expect(within(main).getByRole('heading', { name: 'Call Calendar' })).toBeInTheDocument();
-    expect(within(main).getByText(/book a 15- or 30-minute call/i)).toBeInTheDocument();
+    expect(within(main).getByText(/pick a free time in the next 14 days/i)).toBeInTheDocument();
     expect(within(main).getByRole('link', { name: 'Book a call' })).toHaveAttribute(
       'href',
       '/book',

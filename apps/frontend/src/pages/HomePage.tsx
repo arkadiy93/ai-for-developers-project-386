@@ -6,7 +6,7 @@ export function HomePage() {
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-4 text-center">
       <h1 className="text-4xl font-semibold tracking-tight">Call Calendar</h1>
       <p className="text-muted-foreground max-w-md text-lg">
-        Pick a free time and book a 15- or 30-minute call. No sign-up needed.
+        Choose a type of call, pick a free time in the next 14 days, and book it. No sign-up needed.
       </p>
       <Link to="/book" className={buttonVariants({ size: 'lg' })}>
         Book a call
