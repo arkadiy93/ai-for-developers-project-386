@@ -33,9 +33,9 @@ The 14 days, starting today in UTC, in which a Guest can book.
 _Avoid_: Booking horizon, range, period
 
 **Slot**:
-A start time for one Event Type: on the quarter hour, inside Working Hours and the Booking Window, and with the whole call clear of every Booking.
-_Avoid_: Time slot, opening, free time
+A possible start time for one Event Type: on the quarter hour, inside the Booking Window, and with the whole call inside Working Hours. A Slot is **free** when it hasn't started yet and its whole call is clear of every Booking. Otherwise it is taken.
+_Avoid_: Time slot, opening
 
 **Booking**:
-A Guest's call of one Event Type at a Slot. No two Bookings overlap, whatever their Event Types. A Booking is final: nobody cancels or moves it. It keeps the Event Type's name and its own start and end as they were when booked, so later changes to the Event Type never touch it.
+A Guest's call of one Event Type at a free Slot. No two Bookings overlap, whatever their Event Types. A Booking is final: nobody cancels or moves it. It keeps the Event Type's name and its own start and end as they were when booked, so later changes to the Event Type never touch it.
 _Avoid_: Appointment, meeting, reservation, event
