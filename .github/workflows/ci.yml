@@ -55,3 +55,16 @@ jobs:
           path: |
             e2e/playwright-report
             e2e/test-results
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: docker build -t calendar .
+      - name: Smoke-test the container on a custom PORT
+        run: |
+          docker run -d --name calendar -e PORT=8080 -p 8080:8080 calendar
+          for i in $(seq 30); do curl -sf localhost:8080/api/event-types && break; sleep 1; done
+          curl -sf localhost:8080/ | grep -q '<div id="root">'
+          curl -sf localhost:8080/admin | grep -q '<div id="root">'

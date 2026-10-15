@@ -4,6 +4,8 @@
 
 Разработайте совместно с ИИ сервис для бронирования календаря
 
+**Приложение:** https://ai-for-developers-project-386.onrender.com
+
 Учебный проект Хекслета: https://ru.hexlet.io/programs/ai-for-developers
 Как это должно работать: https://files.hexlet.app/a/2ipc5m
 
@@ -27,12 +29,13 @@ make              # установит зависимости, сгенерир�
 
 `make` сам вызывает `pnpm install`, когда меняются `package.json` или lockfile, и `pnpm generate`, когда меняется `packages/api/main.tsp`.
 
-| Команда      | Что делает                                                                 |
-| ------------ | -------------------------------------------------------------------------- |
-| `make dev`   | dev-режим: backend на :3000, frontend на :5173                             |
-| `make start` | production-сборка и запуск: backend на :3000, frontend на :4173            |
-| `make check` | все проверки CI: актуальность контракта, формат, линт, типы, тесты, сборка |
-| `make e2e`   | e2e-тесты Playwright на своих портах (:3100, :5174)                        |
+| Команда       | Что делает                                                                 |
+| ------------- | -------------------------------------------------------------------------- |
+| `make dev`    | dev-режим: backend на :3000, frontend на :5173                             |
+| `make start`  | production-сборка и запуск: backend на :3000, frontend на :4173            |
+| `make check`  | все проверки CI: актуальность контракта, формат, линт, типы, тесты, сборка |
+| `make e2e`    | e2e-тесты Playwright на своих портах (:3100, :5174)                        |
+| `make docker` | собрать production-образ и запустить его на :8080                          |
 
 ## Использование
 
@@ -48,6 +51,17 @@ pnpm format       # форматирование Prettier
 ```
 
 Frontend проксирует запросы `/api/*` на backend (см. `apps/frontend/vite.config.ts`).
+
+## Деплой
+
+Приложение собирается в один Docker-образ по `Dockerfile` в корне: backend отдаёт и API (`/api`), и собранный frontend, и слушает порт из переменной окружения `PORT` (по умолчанию 3000).
+
+```bash
+docker build -t calendar .
+docker run --rm -e PORT=8080 -p 8080:8080 calendar   # http://localhost:8080
+```
+
+Production развёрнут на [Render](https://render.com) по `render.yaml` (бесплатный web service, автодеплой из `main`): https://ai-for-developers-project-386.onrender.com. База SQLite лежит в контейнере и сбрасывается при каждом деплое, а бесплатный сервис засыпает без трафика, поэтому первый запрос может занять до минуты.
 
 ### Коммиты и релизы
 

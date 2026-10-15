@@ -5,7 +5,7 @@ API_GENERATED := packages/api/generated/api.d.ts
 INSTALL_STAMP := node_modules/.modules.yaml
 
 .DEFAULT_GOAL := dev
-.PHONY: install generate dev build start test lint typecheck e2e format check
+.PHONY: install generate dev build start test lint typecheck e2e docker format check
 
 # Reinstall only when a manifest or the lockfile changes.
 $(INSTALL_STAMP): package.json pnpm-lock.yaml pnpm-workspace.yaml apps/*/package.json packages/*/package.json
@@ -37,6 +37,11 @@ test lint typecheck: install generate
 # Browser e2e (Playwright) on its own ports, so `make dev` can keep running.
 e2e: install generate
 	pnpm test:e2e
+
+# The production image (as Hexlet's check and Render build it), served on :8080.
+docker:
+	docker build -t calendar .
+	docker run --rm -e PORT=8080 -p 8080:8080 calendar
 
 format: install
 	pnpm format
