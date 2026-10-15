@@ -22,6 +22,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - name: Check generated contract is up to date
+        run: |
+          pnpm generate
+          git add --intent-to-add packages/api/generated
+          git diff --exit-code -- packages/api/generated
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck

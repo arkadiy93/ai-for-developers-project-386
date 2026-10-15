@@ -1,0 +1,41 @@
+openapi: 3.0.0
+info:
+  title: Call Calendar API
+  description: Call Calendar API. Every route lives under `/api`.
+  version: 0.0.0
+tags: []
+paths: {}
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: A stable machine-readable code, for example `VALIDATION_ERROR` or `NOT_FOUND`.
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+      description: The body of every 4xx and 5xx response.
+    ErrorDetail:
+      type: object
+      required:
+        - path
+        - message
+      properties:
+        path:
+          type: string
+          description: JSON pointer to the field, for example `/durationMinutes`.
+        message:
+          type: string
+      description: A field that failed validation.
+servers:
+  - url: /api
+    description: Call Calendar API
+    variables: {}

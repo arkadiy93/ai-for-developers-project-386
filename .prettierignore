@@ -7,3 +7,4 @@ CHANGELOG.md
 .idea
 .agents
 .claude
+packages/api/generated

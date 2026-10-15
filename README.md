@@ -16,18 +16,27 @@
 
 ## Установка
 
-Требуется Node.js 22+ и pnpm 9+.
+Требуется Node.js 22.13+ и pnpm 9+.
 
 ```bash
 git clone https://github.com/arkadiy93/ai-for-developers-project-386.git
 cd ai-for-developers-project-386
-pnpm install
+make              # установит зависимости, сгенерирует контракт API и запустит dev
 ```
+
+`make` сам вызывает `pnpm install`, когда меняются `package.json` или lockfile, и `pnpm generate`, когда меняется `packages/api/main.tsp`.
+
+| Команда      | Что делает                                                                 |
+| ------------ | -------------------------------------------------------------------------- |
+| `make dev`   | dev-режим: backend на :3000, frontend на :5173                             |
+| `make start` | production-сборка и запуск: backend на :3000, frontend на :4173            |
+| `make check` | все проверки CI: актуальность контракта, формат, линт, типы, тесты, сборка |
 
 ## Использование
 
 ```bash
 pnpm dev          # backend на http://localhost:3000, frontend на http://localhost:5173
+pnpm generate     # контракт API: TypeSpec -> OpenAPI и TypeScript-типы
 pnpm test         # тесты всех пакетов
 pnpm lint         # oxlint
 pnpm typecheck    # проверка типов
