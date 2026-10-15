@@ -10,6 +10,6 @@ const dbPath =
 
 mkdirSync(dirname(dbPath), { recursive: true });
 
-createApp({ db: new DatabaseSync(dbPath) }).listen(port, () => {
+createApp({ db: new DatabaseSync(dbPath), staticDir: process.env.STATIC_DIR }).listen(port, () => {
   console.log(`Backend listening on http://localhost:${port}`);
 });
