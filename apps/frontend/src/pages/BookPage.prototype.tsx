@@ -88,6 +88,14 @@ function GuestForm({
 
 /* ---------------- A: step-by-step wizard ---------------- */
 
+// Every quarter-hour start in Working Hours where the call still ends by 18:00.
+function allStarts(day: Date, durationMinutes: number) {
+  const starts: Date[] = [];
+  for (let m = 9 * 60; m + durationMinutes <= 18 * 60; m += 15)
+    starts.push(new Date(day.getTime() + m * 60000));
+  return starts;
+}
+
 export function VariantA({ state }: Props) {
   const types = eventTypesFor(state);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -185,17 +193,26 @@ export function VariantA({ state }: Props) {
             <EmptyBox title="No free times this day" hint="Try another day." />
           ) : (
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-              {slotsFor(day, type.durationMinutes).map((s) => (
-                <Button
-                  key={s.toISOString()}
-                  variant="outline"
-                  onClick={() => {
-                    setSlot(s);
-                    setStep(3);
-                  }}
-                >
-                  {fmtTime(s)}
-                </Button>
+              {allStarts(day, type.durationMinutes).map((s) => {
+                const free = slotsFor(day, type.durationMinutes).some(
+                  (x) => x.getTime() === s.getTime(),
+                );
+                return (
+                  <Button
+                    key={s.toISOString()}
+                    variant="outline"
+                    disabled={!free}
+                    title={free ? undefined : 'Not available'}
+                    className={cn(!free && 'line-through')}
+                    onClick={() => {
+                      setSlot(s);
+                      setStep(3);
+                    }}
+                  >
+                    {fmtTime(s)}
+                  </Button>
+                );
+              })}
               ))}
             </div>
           )}
