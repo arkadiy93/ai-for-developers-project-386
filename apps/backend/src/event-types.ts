@@ -38,7 +38,7 @@ function parseInput(input: EventTypeInput, next: NextFunction): EventTypeInput |
   };
 }
 
-const eventTypeNotFound: HttpError = {
+export const eventTypeNotFound: HttpError = {
   status: 404,
   code: 'EVENT_TYPE_NOT_FOUND',
   message: 'event type not found',

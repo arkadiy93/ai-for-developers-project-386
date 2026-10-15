@@ -4,6 +4,7 @@ import type { components } from '@calendar/api';
 import type { BookedTime } from './slots.js';
 
 type EventType = components['schemas']['EventType'];
+type Booking = components['schemas']['Booking'];
 
 const schema = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
 
@@ -32,6 +33,13 @@ export function createStore(db: DatabaseSync) {
      WHERE id = :id`,
   );
   const deleteEventType = db.prepare(`DELETE FROM event_types WHERE id = ?`);
+  const selectOverlappingBooking = db.prepare(
+    `SELECT 1 FROM bookings WHERE start < :end AND end > :start LIMIT 1`,
+  );
+  const insertBooking = db.prepare(
+    `INSERT INTO bookings (id, event_type_id, event_type_name, start, end, guest_name, guest_email)
+     VALUES (:id, :eventTypeId, :eventTypeName, :start, :end, :guestName, :guestEmail)`,
+  );
 
   return {
     listEventTypes(): EventType[] {
@@ -58,6 +66,25 @@ export function createStore(db: DatabaseSync) {
 
     listBookingsEndingAfter(after: Date): BookedTime[] {
       return selectBookingsEndingAfter.all(after.toISOString()) as unknown as BookedTime[];
+    },
+
+    /**
+     * Saves the Booking unless it overlaps a Booking of any Event Type, and returns whether it did.
+     * The check and the insert run in one transaction.
+     */
+    createBookingIfFree(booking: Booking): boolean {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const free = !selectOverlappingBooking.get({ start: booking.start, end: booking.end });
+        if (free) {
+          insertBooking.run(booking);
+        }
+        db.exec('COMMIT');
+        return free;
+      } catch (err) {
+        db.exec('ROLLBACK');
+        throw err;
+      }
     },
   };
 }

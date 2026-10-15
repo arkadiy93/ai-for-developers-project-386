@@ -7,7 +7,10 @@ type ErrorDetail = components['schemas']['ErrorDetail'];
 // The shape of errors thrown by express-openapi-validator and Express's body parser, and by handlers.
 export interface HttpError {
   status?: number;
-  /** A 404's code when it is more specific than `NOT_FOUND`, for example `EVENT_TYPE_NOT_FOUND`. */
+  /**
+   * A 404's code when it is more specific than `NOT_FOUND`, for example `EVENT_TYPE_NOT_FOUND`,
+   * or a 409's code, for example `SLOT_UNAVAILABLE`.
+   */
   code?: string;
   message?: string;
   errors?: ErrorDetail[];
@@ -24,6 +27,9 @@ function toEnvelope(err: HttpError): [number, ApiError] {
 
   if (status === 404) {
     return [404, { code: err.code ?? 'NOT_FOUND', message }];
+  }
+  if (status === 409 && err.code) {
+    return [409, { code: err.code, message }];
   }
   if (status === 405) {
     return [405, { code: 'METHOD_NOT_ALLOWED', message }];

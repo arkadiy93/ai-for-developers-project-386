@@ -1,27 +1,16 @@
-import { type FormEvent, type ReactNode, useId, useState } from 'react';
+import { type FormEvent, type ReactNode, useState } from 'react';
+import { Field } from '@/components/Field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import type { ApiError, EventTypeInput } from '@/lib/api';
 import { durations, formatDuration } from '@/lib/duration';
+import { type FieldErrors, toFieldErrors } from '@/lib/field-errors';
 
-type Field = keyof EventTypeInput;
-type FieldErrors = Partial<Record<Field, string>>;
+type FieldName = keyof EventTypeInput;
 
-const fields: Field[] = ['name', 'description', 'durationMinutes'];
-
-// Paths are JSON pointers into the body, for example `/name`. Undefined if any isn't a form field.
-function toFieldErrors(details: { path: string; message: string }[]): FieldErrors | undefined {
-  const errors: FieldErrors = {};
-  for (const { path, message } of details) {
-    const field = fields.find((f) => path === `/${f}`);
-    if (!field) return undefined;
-    errors[field] = message;
-  }
-  return errors;
-}
+const fields: FieldName[] = ['name', 'description', 'durationMinutes'];
 
 /** What `submit` resolves to: openapi-fetch's result, narrowed to what the form reads. */
 export interface SubmitResult {
@@ -61,7 +50,7 @@ export function EventTypeForm({
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description);
   const [durationMinutes, setDurationMinutes] = useState(initial.durationMinutes);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors<FieldName>>({});
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
 
@@ -80,7 +69,7 @@ export function EventTypeForm({
         onNotFound();
         return;
       }
-      const errors = error?.details?.length ? toFieldErrors(error.details) : undefined;
+      const errors = error?.details?.length ? toFieldErrors(fields, error.details) : undefined;
       if (errors) {
         setFieldErrors(errors);
       } else {
@@ -151,40 +140,5 @@ export function EventTypeForm({
         </Button>
       </div>
     </form>
-  );
-}
-
-interface ControlProps {
-  id: string;
-  'aria-invalid'?: true;
-  'aria-describedby'?: string;
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: (props: ControlProps) => ReactNode;
-}) {
-  const id = useId();
-  const errorId = `${id}-error`;
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children({
-        id,
-        'aria-invalid': error ? true : undefined,
-        'aria-describedby': error ? errorId : undefined,
-      })}
-      {error && (
-        <p id={errorId} className="text-destructive text-xs">
-          {error}
-        </p>
-      )}
-    </div>
   );
 }

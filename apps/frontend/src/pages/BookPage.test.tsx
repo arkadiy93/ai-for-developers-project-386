@@ -9,6 +9,7 @@ import {
   serverError,
   stubApi,
   workshop,
+  workshopBooking,
   workshopSlots,
 } from '@/test/api';
 import { renderAt } from '@/test/render';
@@ -194,5 +195,203 @@ describe('booking page, step 2: time', () => {
 
     expect(await screen.findByRole('list', { name: 'Start times' })).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('booking page, steps 3 and 4: details and done', () => {
+  const slotsRoute = `GET /api/event-types/${workshop.id}/slots`;
+
+  async function pickWorkshopAt0930() {
+    renderAt('/book');
+    await userEvent.click(await screen.findByRole('button', { name: /Workshop/ }));
+    await userEvent.click(await screen.findByRole('button', { name: '09:30' }));
+  }
+
+  async function fillAndBook(name = 'Ada Lovelace', email = 'ada@example.com') {
+    await userEvent.type(screen.getByLabelText('Your name'), name);
+    await userEvent.type(screen.getByLabelText('Email'), email);
+    await userEvent.click(screen.getByRole('button', { name: 'Book' }));
+  }
+
+  it('books the chosen time and confirms it, then starts over on "Book another call"', async () => {
+    let sent: unknown;
+    stubApi({
+      'GET /api/event-types': () => json([intro, workshop]),
+      [slotsRoute]: () => json(workshopSlots),
+      'POST /api/bookings': async (request) => {
+        sent = await request.json();
+        return json(workshopBooking, 201);
+      },
+    });
+    await pickWorkshopAt0930();
+
+    expect(screen.getByText('3. Your details')).toHaveAttribute('aria-current', 'step');
+    expect(
+      screen.getByRole('heading', { name: 'Workshop · Fri, Oct 16, 09:30 UTC' }),
+    ).toBeInTheDocument();
+    await fillAndBook('  Ada Lovelace ', ' ada@example.com ');
+
+    expect(await screen.findByRole('heading', { name: 'Booked' })).toBeInTheDocument();
+    expect(sent).toEqual({
+      eventTypeId: workshop.id,
+      start: '2026-10-16T09:30:00.000Z',
+      guestName: 'Ada Lovelace',
+      guestEmail: 'ada@example.com',
+    });
+    expect(screen.getByText('4. Done')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByText('Workshop')).toBeInTheDocument();
+    expect(screen.getByText('Fri, Oct 16, 09:30–10:30 UTC')).toBeInTheDocument();
+    expect(
+      screen.getByText("The Owner will see this call in their list. There's nothing else to do."),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Book another call' }));
+
+    expect(screen.getByText('1. Event type')).toHaveAttribute('aria-current', 'step');
+    expect(await screen.findByRole('button', { name: /Workshop/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('goes back to step 2 on "change"', async () => {
+    stubApi({
+      'GET /api/event-types': () => json([workshop]),
+      [slotsRoute]: () => json(workshopSlots),
+    });
+    await pickWorkshopAt0930();
+
+    await userEvent.click(screen.getByRole('button', { name: 'change' }));
+
+    expect(screen.getByText('2. Time')).toHaveAttribute('aria-current', 'step');
+    expect(await screen.findByRole('list', { name: 'Start times' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['a blank name', '   ', 'ada@example.com', 'Your name', 'Enter your name.'],
+    ['a bad email', 'Ada', 'ada.example.com', 'Email', 'Enter a valid email address.'],
+    [
+      'an over-long email',
+      'Ada',
+      `${'x'.repeat(243)}@example.com`,
+      'Email',
+      'Email must be at most 254 characters.',
+    ],
+  ])(
+    'shows %s under its field without sending anything',
+    async (_case, name, email, label, message) => {
+      const fetch = stubApi({
+        'GET /api/event-types': () => json([workshop]),
+        [slotsRoute]: () => json(workshopSlots),
+      });
+      await pickWorkshopAt0930();
+
+      await fillAndBook(name, email);
+
+      expect(screen.getByLabelText(label)).toHaveAccessibleDescription(message);
+      expect(screen.getByLabelText(label)).toBeInvalid();
+      expect(fetch).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("shows a server 400's details under their fields", async () => {
+    stubApi({
+      'GET /api/event-types': () => json([workshop]),
+      [slotsRoute]: () => json(workshopSlots),
+      'POST /api/bookings': () =>
+        json(
+          {
+            code: 'VALIDATION_ERROR',
+            message: 'request/body has invalid fields',
+            details: [
+              { path: '/guestName', message: 'must not be blank' },
+              { path: '/guestEmail', message: 'must match format "email"' },
+            ],
+          },
+          400,
+        ),
+    });
+    await pickWorkshopAt0930();
+
+    await fillAndBook();
+
+    expect(await screen.findByText('must not be blank')).toBeInTheDocument();
+    expect(screen.getByLabelText('Your name')).toHaveAccessibleDescription('must not be blank');
+    expect(screen.getByLabelText('Email')).toHaveAccessibleDescription('must match format "email"');
+  });
+
+  /** How many requests `fetch` got for `"<METHOD> <path>"`. */
+  function requestsTo(fetch: ReturnType<typeof stubApi>, key: string) {
+    return fetch.mock.calls.filter(
+      ([request]) => `${request.method} ${new URL(request.url).pathname}` === key,
+    ).length;
+  }
+
+  it('offers "Pick another time" when the time was just taken, which refetches the free times', async () => {
+    const fetch = stubApi({
+      'GET /api/event-types': () => json([workshop]),
+      [slotsRoute]: () => json(workshopSlots),
+      'POST /api/bookings': () =>
+        json({ code: 'SLOT_UNAVAILABLE', message: 'that time is not a free slot' }, 409),
+    });
+    await pickWorkshopAt0930();
+
+    await fillAndBook();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Sorry, that time was just booked by someone else.');
+    expect(screen.getByRole('button', { name: 'Book' })).toBeDisabled();
+    await userEvent.click(within(alert).getByRole('button', { name: 'Pick another time' }));
+
+    expect(screen.getByText('2. Time')).toHaveAttribute('aria-current', 'step');
+    expect(await screen.findByRole('list', { name: 'Start times' })).toBeInTheDocument();
+    expect(requestsTo(fetch, slotsRoute)).toBe(2);
+  });
+
+  it('offers "Choose another event type" when the event type is gone, which refetches the list', async () => {
+    const fetch = stubApi({
+      'GET /api/event-types': () => json([workshop]),
+      [slotsRoute]: () => json(workshopSlots),
+      'POST /api/bookings': () =>
+        json({ code: 'EVENT_TYPE_NOT_FOUND', message: 'event type not found' }, 404),
+    });
+    await pickWorkshopAt0930();
+
+    await fillAndBook();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('This event type is no longer available.');
+    expect(screen.getByRole('button', { name: 'Book' })).toBeDisabled();
+    await userEvent.click(within(alert).getByRole('button', { name: 'Choose another event type' }));
+
+    expect(screen.getByText('1. Event type')).toHaveAttribute('aria-current', 'step');
+    expect(await screen.findByRole('list', { name: 'Event types' })).toBeInTheDocument();
+    expect(requestsTo(fetch, 'GET /api/event-types')).toBe(2);
+  });
+
+  it.each([
+    ['a server error', () => json(serverError, 500)],
+    [
+      'a network error',
+      () => {
+        throw new TypeError('Failed to fetch');
+      },
+    ],
+  ])('shows a generic error on %s and keeps the values', async (_case, respond) => {
+    stubApi({
+      'GET /api/event-types': () => json([workshop]),
+      [slotsRoute]: () => json(workshopSlots),
+      'POST /api/bookings': respond,
+    });
+    await pickWorkshopAt0930();
+
+    await fillAndBook();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Something went wrong. Please try again.',
+    );
+    expect(screen.getByLabelText('Your name')).toHaveValue('Ada Lovelace');
+    expect(screen.getByLabelText('Email')).toHaveValue('ada@example.com');
+    expect(screen.getByRole('button', { name: 'Book' })).toBeEnabled();
   });
 });

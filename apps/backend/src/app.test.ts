@@ -245,3 +245,166 @@ describe('slots', () => {
     expect(res.body).toMatchObject({ code: 'EVENT_TYPE_NOT_FOUND', message: expect.any(String) });
   });
 });
+
+describe('booking a call', () => {
+  const workshop = { name: 'Workshop', description: '', durationMinutes: 60 };
+  const guest = { guestName: 'Ada Lovelace', guestEmail: 'ada@example.com' };
+
+  async function createEventType(app: ReturnType<typeof testApp>, fields = workshop) {
+    const res = await request(app).post('/api/event-types').send(fields).expect(201);
+    return res.body.id as string;
+  }
+
+  it('returns 201 with the Booking, its Event Type name and end fixed at booking time', async () => {
+    const app = testApp();
+    const eventTypeId = await createEventType(app);
+
+    const res = await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId, start: '2026-10-16T09:30:00.000Z', ...guest });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual({
+      id: expect.any(String),
+      eventTypeId,
+      eventTypeName: 'Workshop',
+      start: '2026-10-16T09:30:00.000Z',
+      end: '2026-10-16T10:30:00.000Z',
+      ...guest,
+    });
+  });
+
+  it('marks the booked time unavailable in the slots', async () => {
+    const app = testApp();
+    const eventTypeId = await createEventType(app);
+    await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId, start: '2026-10-16T09:30:00.000Z', ...guest })
+      .expect(201);
+
+    const res = await request(app).get(`/api/event-types/${eventTypeId}/slots`);
+
+    expect(res.body.days[1].starts.slice(0, 7)).toEqual([
+      { start: '2026-10-16T09:00:00.000Z', available: false },
+      { start: '2026-10-16T09:15:00.000Z', available: false },
+      { start: '2026-10-16T09:30:00.000Z', available: false },
+      { start: '2026-10-16T09:45:00.000Z', available: false },
+      { start: '2026-10-16T10:00:00.000Z', available: false },
+      { start: '2026-10-16T10:15:00.000Z', available: false },
+      { start: '2026-10-16T10:30:00.000Z', available: true },
+    ]);
+  });
+
+  it.each([
+    ['the same Event Type at the same start', workshop, '2026-10-16T09:30:00.000Z'],
+    [
+      'a different Event Type overlapping it',
+      { ...workshop, name: 'Intro', durationMinutes: 15 },
+      '2026-10-16T10:15:00.000Z',
+    ],
+  ])('returns 409 SLOT_UNAVAILABLE for a time taken by %s', async (_case, fields, start) => {
+    const app = testApp();
+    const first = await createEventType(app);
+    const second = await createEventType(app, fields);
+    await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId: first, start: '2026-10-16T09:30:00.000Z', ...guest })
+      .expect(201);
+
+    const res = await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId: second, start, guestName: 'Bob', guestEmail: 'bob@example.com' });
+
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ code: 'SLOT_UNAVAILABLE', message: expect.any(String) });
+  });
+
+  it.each([
+    ['past', '2026-10-15T09:30:00.000Z'],
+    ['starting right now', '2026-10-15T10:00:00.000Z'],
+    ['after the Booking Window', '2026-10-29T09:00:00.000Z'],
+    ['before the Booking Window', '2026-10-14T12:00:00.000Z'],
+    ['off the quarter hour', '2026-10-16T09:10:00.000Z'],
+    ['off the quarter hour by seconds', '2026-10-16T09:30:30.000Z'],
+    ['before Working Hours', '2026-10-16T08:45:00.000Z'],
+    ['ending after Working Hours', '2026-10-16T17:15:00.000Z'],
+  ])('returns 409 SLOT_UNAVAILABLE for a start %s', async (_case, start) => {
+    const app = testApp();
+    const eventTypeId = await createEventType(app);
+
+    const res = await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId, start, ...guest });
+
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ code: 'SLOT_UNAVAILABLE' });
+  });
+
+  it('accepts a start written without milliseconds', async () => {
+    const app = testApp();
+    const eventTypeId = await createEventType(app);
+
+    const res = await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId, start: '2026-10-16T09:30:00Z', ...guest });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ start: '2026-10-16T09:30:00.000Z' });
+  });
+
+  it.each([
+    ['a whitespace-only name', { guestName: '   ' }, '/guestName'],
+    ['an over-long name', { guestName: 'x'.repeat(101) }, '/guestName'],
+    ['a bad email', { guestEmail: 'ada.example.com' }, '/guestEmail'],
+    ['an over-long email', { guestEmail: `${'x'.repeat(243)}@example.com` }, '/guestEmail'],
+  ])('rejects %s with a 400 on that field and books nothing', async (_case, override, path) => {
+    const app = testApp();
+    const eventTypeId = await createEventType(app);
+    const start = '2026-10-16T09:30:00.000Z';
+
+    const res = await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId, start, ...guest, ...override });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      details: [{ path, message: expect.any(String) }],
+    });
+    await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId, start, ...guest })
+      .expect(201);
+  });
+
+  it('trims the name before saving', async () => {
+    const app = testApp();
+    const eventTypeId = await createEventType(app);
+
+    const res = await request(app)
+      .post('/api/bookings')
+      .send({ eventTypeId, start: '2026-10-16T09:30:00.000Z', ...guest, guestName: '  Ada \n' });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ guestName: 'Ada', guestEmail: 'ada@example.com' });
+  });
+
+  it('returns 404 EVENT_TYPE_NOT_FOUND for an unknown Event Type, deleted, never created or malformed', async () => {
+    const app = testApp();
+    const deleted = await createEventType(app);
+    await request(app).delete(`/api/event-types/${deleted}`).expect(204);
+
+    const responses = await Promise.all(
+      [deleted, unknownId, 'not-a-uuid'].map((eventTypeId) =>
+        request(app)
+          .post('/api/bookings')
+          .send({ eventTypeId, start: '2026-10-16T09:30:00.000Z', ...guest }),
+      ),
+    );
+
+    for (const res of responses) {
+      expect(res.status).toBe(404);
+      expect(res.body).toMatchObject({ code: 'EVENT_TYPE_NOT_FOUND', message: expect.any(String) });
+    }
+  });
+});
