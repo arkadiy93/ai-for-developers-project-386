@@ -12,6 +12,7 @@
 - Монорепозиторий на pnpm workspaces, TypeScript 7
 - Backend (`apps/backend`): Express 5, tsx, Vitest + Supertest
 - Frontend (`apps/frontend`): Vite, React 19, Tailwind CSS v4, shadcn/ui, Vitest + Testing Library
+- E2E (`e2e`): Playwright, сквозной сценарий гостя против настоящего backend
 - Инструменты: oxlint, Prettier, commitlint + husky (Conventional Commits), GitHub Actions, release-please
 
 ## Установка
@@ -31,6 +32,7 @@ make              # установит зависимости, сгенерир�
 | `make dev`   | dev-режим: backend на :3000, frontend на :5173                             |
 | `make start` | production-сборка и запуск: backend на :3000, frontend на :4173            |
 | `make check` | все проверки CI: актуальность контракта, формат, линт, типы, тесты, сборка |
+| `make e2e`   | e2e-тесты Playwright на своих портах (:3100, :5174)                        |
 
 ## Использование
 
@@ -38,6 +40,7 @@ make              # установит зависимости, сгенерир�
 pnpm dev          # backend на http://localhost:3000, frontend на http://localhost:5173
 pnpm generate     # контракт API: TypeSpec -> OpenAPI и TypeScript-типы
 pnpm test         # тесты всех пакетов
+pnpm test:e2e     # e2e-тесты Playwright (в первый раз: pnpm --filter e2e exec playwright install chromium)
 pnpm lint         # oxlint
 pnpm typecheck    # проверка типов
 pnpm build        # сборка всех пакетов

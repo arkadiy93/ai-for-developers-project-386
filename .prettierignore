@@ -8,3 +8,6 @@ CHANGELOG.md
 .agents
 .claude
 packages/api/generated
+playwright-report/
+test-results/
+blob-report/
