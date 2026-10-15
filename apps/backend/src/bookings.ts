@@ -19,6 +19,10 @@ const slotUnavailable: HttpError = {
 export function bookingsRouter(store: Store, now: () => Date) {
   const router = Router();
 
+  router.get('/bookings', (_req, res) => {
+    res.json(store.listUpcomingBookings(now()));
+  });
+
   router.post('/bookings', (req, res, next) => {
     const input = req.body as BookingInput;
     // The one rule the contract documents but TypeSpec can't express.

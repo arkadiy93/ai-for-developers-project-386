@@ -88,7 +88,7 @@ export function eventTypesRouter(store: Store, now: () => Date) {
     }
 
     const current = now();
-    res.json(computeSlots(eventType, store.listBookingsEndingAfter(current), current));
+    res.json(computeSlots(eventType, store.listBookedTimesEndingAfter(current), current));
   });
 
   return router;

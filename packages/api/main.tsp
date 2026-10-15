@@ -165,6 +165,13 @@ model Booking {
 @tag("Bookings")
 namespace Bookings {
   /**
+   * Every Booking that hasn't ended yet, so a call in progress stays until its end, sorted by
+   * start. There is no paging.
+   */
+  @get
+  op list(): Booking[];
+
+  /**
    * Books a free Slot. Any start that isn't a free Slot right now (taken by a Booking of any
    * Event Type, past, outside the Booking Window or Working Hours, off the quarter hour) is a
    * 409 `SLOT_UNAVAILABLE`. An unknown Event Type is a 404 `EVENT_TYPE_NOT_FOUND`.

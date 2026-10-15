@@ -20,8 +20,13 @@ export function createStore(db: DatabaseSync) {
     `SELECT id, name, description, duration_minutes AS durationMinutes
      FROM event_types WHERE id = ?`,
   );
-  const selectBookingsEndingAfter = db.prepare(
+  const selectBookedTimesEndingAfter = db.prepare(
     `SELECT start, end FROM bookings WHERE end > ? ORDER BY start`,
+  );
+  const selectUpcomingBookings = db.prepare(
+    `SELECT id, event_type_id AS eventTypeId, event_type_name AS eventTypeName, start, end,
+       guest_name AS guestName, guest_email AS guestEmail
+     FROM bookings WHERE end > ? ORDER BY start`,
   );
   const insertEventType = db.prepare(
     `INSERT INTO event_types (id, name, description, duration_minutes)
@@ -64,8 +69,14 @@ export function createStore(db: DatabaseSync) {
       return deleteEventType.run(id).changes > 0;
     },
 
-    listBookingsEndingAfter(after: Date): BookedTime[] {
-      return selectBookingsEndingAfter.all(after.toISOString()) as unknown as BookedTime[];
+    /** The time taken by each Booking that hasn't ended by `after`, sorted by start. */
+    listBookedTimesEndingAfter(after: Date): BookedTime[] {
+      return selectBookedTimesEndingAfter.all(after.toISOString()) as unknown as BookedTime[];
+    },
+
+    /** The Bookings that haven't ended by `now`, sorted by start. */
+    listUpcomingBookings(now: Date): Booking[] {
+      return selectUpcomingBookings.all(now.toISOString()) as unknown as Booking[];
     },
 
     /**
