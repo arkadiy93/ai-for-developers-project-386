@@ -14,7 +14,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://localhost:3000',
+      // The e2e tests point this at their own backend.
+      '/api': process.env.API_URL ?? 'http://localhost:3000',
     },
   },
   test: {
