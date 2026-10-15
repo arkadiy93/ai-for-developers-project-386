@@ -3,7 +3,26 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = Record<string, never>;
+export interface paths {
+    "/event-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every Event Type, sorted by name. */
+        get: operations["EventTypes_list"];
+        put?: never;
+        /** @description Creates an Event Type. A blank name or a duration that isn't a multiple of 15 is a 400. */
+        post: operations["EventTypes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
@@ -20,6 +39,35 @@ export interface components {
             path: string;
             message: string;
         };
+        /** @description A kind of call the Owner offers. */
+        EventType: {
+            /**
+             * Format: uuid
+             * @description Server-generated.
+             */
+            id: string;
+            /** @description Must contain a non-space character. The server trims it before saving. */
+            name: string;
+            /** @description May be empty. The server trims it before saving. */
+            description: string;
+            /**
+             * Format: int32
+             * @description The length of the call. Must be a multiple of 15.
+             */
+            durationMinutes: number;
+        };
+        /** @description The fields of an Event Type that the Owner sets. */
+        EventTypeInput: {
+            /** @description Must contain a non-space character. The server trims it before saving. */
+            name: string;
+            /** @description May be empty. The server trims it before saving. */
+            description: string;
+            /**
+             * Format: int32
+             * @description The length of the call. Must be a multiple of 15.
+             */
+            durationMinutes: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -28,4 +76,58 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    EventTypes_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventType"][];
+                };
+            };
+        };
+    };
+    EventTypes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventTypeInput"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventType"];
+                };
+            };
+            /** @description The server could not understand the request due to invalid syntax. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+}

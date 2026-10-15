@@ -3,8 +3,50 @@ info:
   title: Call Calendar API
   description: Call Calendar API. Every route lives under `/api`.
   version: 0.0.0
-tags: []
-paths: {}
+tags:
+  - name: Event Types
+paths:
+  /event-types:
+    get:
+      operationId: EventTypes_list
+      description: Every Event Type, sorted by name.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventType'
+      tags:
+        - Event Types
+    post:
+      operationId: EventTypes_create
+      description: Creates an Event Type. A blank name or a duration that isn't a multiple of 15 is a 400.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Event Types
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTypeInput'
 components:
   schemas:
     Error:
@@ -35,6 +77,57 @@ components:
         message:
           type: string
       description: A field that failed validation.
+    EventType:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - durationMinutes
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Server-generated.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Must contain a non-space character. The server trims it before saving.
+        description:
+          type: string
+          maxLength: 500
+          description: May be empty. The server trims it before saving.
+        durationMinutes:
+          type: integer
+          format: int32
+          minimum: 15
+          maximum: 540
+          description: The length of the call. Must be a multiple of 15.
+      description: A kind of call the Owner offers.
+    EventTypeInput:
+      type: object
+      required:
+        - name
+        - description
+        - durationMinutes
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Must contain a non-space character. The server trims it before saving.
+        description:
+          type: string
+          maxLength: 500
+          description: May be empty. The server trims it before saving.
+        durationMinutes:
+          type: integer
+          format: int32
+          minimum: 15
+          maximum: 540
+          description: The length of the call. Must be a multiple of 15.
+      description: The fields of an Event Type that the Owner sets.
 servers:
   - url: /api
     description: Call Calendar API

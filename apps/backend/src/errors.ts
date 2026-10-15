@@ -4,8 +4,8 @@ import type { ErrorRequestHandler, RequestHandler } from 'express';
 type ApiError = components['schemas']['Error'];
 type ErrorDetail = components['schemas']['ErrorDetail'];
 
-// The shape of errors thrown by express-openapi-validator and Express's body parser.
-interface HttpError {
+// The shape of errors thrown by express-openapi-validator and Express's body parser, and by handlers.
+export interface HttpError {
   status?: number;
   message?: string;
   errors?: ErrorDetail[];

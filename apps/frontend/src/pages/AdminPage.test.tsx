@@ -1,0 +1,171 @@
+import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import type { ApiError, EventType } from '@/lib/api';
+import { deepDive, intro, json, pending, serverError, stubApi, workshop } from '@/test/api';
+import { renderAt } from '@/test/render';
+
+async function findPanel() {
+  return screen.findByRole('region', { name: 'Event types' });
+}
+
+describe('admin event types panel', () => {
+  it('shows a card with the name and duration of each event type', async () => {
+    stubApi({ 'GET /api/event-types': () => json([deepDive, intro]) });
+    renderAt('/admin');
+
+    const list = within(await findPanel()).getByRole('list');
+    const items = within(list).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('Deep dive');
+    expect(items[0]).toHaveTextContent('1 h 30 min');
+    expect(items[1]).toHaveTextContent('Intro call');
+    expect(items[1]).toHaveTextContent('15 min');
+  });
+
+  it('explains what an empty list means for Guests', async () => {
+    stubApi({ 'GET /api/event-types': () => json([]) });
+    renderAt('/admin');
+
+    expect(
+      await within(await findPanel()).findByText('None yet. Guests see an empty booking page.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows placeholders while the event types load', async () => {
+    stubApi({ 'GET /api/event-types': pending });
+    renderAt('/admin');
+
+    expect(
+      within(await findPanel()).getByRole('status', { name: 'Loading event types' }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an error with Retry when loading fails, and loads again on Retry', async () => {
+    let fail = true;
+    stubApi({
+      'GET /api/event-types': () => (fail ? json(serverError, 500) : json([intro])),
+    });
+    renderAt('/admin');
+
+    const alert = await within(await findPanel()).findByRole('alert');
+    expect(alert).toHaveTextContent("Couldn't load event types.");
+    fail = false;
+    await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByText('Intro call')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('admin: creating an event type', () => {
+  it('creates an event type from the inline form and shows it in name order', async () => {
+    let eventTypes: EventType[] = [deepDive, workshop];
+    let posted: unknown;
+    stubApi({
+      'GET /api/event-types': () => json(eventTypes),
+      'POST /api/event-types': async (request) => {
+        posted = await request.json();
+        eventTypes = [deepDive, intro, workshop];
+        return json(intro, 201);
+      },
+    });
+    renderAt('/admin');
+    const panel = await findPanel();
+
+    await userEvent.click(await within(panel).findByRole('button', { name: '+ New event type' }));
+    await userEvent.type(within(panel).getByLabelText('Name'), 'Intro call');
+    await userEvent.type(within(panel).getByLabelText('Description'), 'A quick hello.');
+    await userEvent.selectOptions(within(panel).getByLabelText('Duration'), '15 min');
+    await userEvent.click(within(panel).getByRole('button', { name: 'Create' }));
+
+    expect(posted).toEqual({
+      name: 'Intro call',
+      description: 'A quick hello.',
+      durationMinutes: 15,
+    });
+    expect(await within(panel).findByText('Intro call')).toBeInTheDocument();
+    expect(within(panel).queryByLabelText('Name')).not.toBeInTheDocument();
+    const items = within(within(panel).getByRole('list')).getAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Deep dive'),
+      expect.stringContaining('Intro call'),
+      expect.stringContaining('Workshop'),
+    ]);
+  });
+
+  it('offers durations from 15 min to 9 h in steps of 15', async () => {
+    stubApi({ 'GET /api/event-types': () => json([]) });
+    renderAt('/admin');
+    const panel = await findPanel();
+
+    await userEvent.click(await within(panel).findByRole('button', { name: '+ New event type' }));
+
+    const options = within(within(panel).getByLabelText('Duration')).getAllByRole('option');
+    expect(options).toHaveLength(36);
+    expect(options[0]).toHaveTextContent('15 min');
+    expect(options[3]).toHaveTextContent('1 h');
+    expect(options[5]).toHaveTextContent('1 h 30 min');
+    expect(options[35]).toHaveTextContent('9 h');
+  });
+
+  it('shows each server validation message under its field', async () => {
+    const error: ApiError = {
+      code: 'VALIDATION_ERROR',
+      message: 'request/body has invalid fields',
+      details: [
+        { path: '/name', message: 'must not be blank' },
+        { path: '/description', message: 'must NOT have more than 500 characters' },
+      ],
+    };
+    stubApi({
+      'GET /api/event-types': () => json([]),
+      'POST /api/event-types': () => json(error, 400),
+    });
+    renderAt('/admin');
+    const panel = await findPanel();
+
+    await userEvent.click(await within(panel).findByRole('button', { name: '+ New event type' }));
+    await userEvent.type(within(panel).getByLabelText('Name'), '   ');
+    await userEvent.click(within(panel).getByRole('button', { name: 'Create' }));
+
+    expect(await within(panel).findByText('must not be blank')).toBeInTheDocument();
+    expect(within(panel).getByLabelText('Name')).toHaveAccessibleDescription('must not be blank');
+    expect(within(panel).getByLabelText('Description')).toHaveAccessibleDescription(
+      'must NOT have more than 500 characters',
+    );
+    expect(within(panel).getByLabelText('Duration')).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('collapses the form on Cancel without creating anything', async () => {
+    const fetch = stubApi({ 'GET /api/event-types': () => json([]) });
+    renderAt('/admin');
+    const panel = await findPanel();
+
+    await userEvent.click(await within(panel).findByRole('button', { name: '+ New event type' }));
+    await userEvent.type(within(panel).getByLabelText('Name'), 'Intro call');
+    await userEvent.click(within(panel).getByRole('button', { name: 'Cancel' }));
+
+    expect(within(panel).queryByLabelText('Name')).not.toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: '+ New event type' })).toBeInTheDocument();
+    expect(fetch.mock.calls.every(([request]) => request.method === 'GET')).toBe(true);
+  });
+
+  it('keeps the form open with a message when creating fails for another reason', async () => {
+    stubApi({
+      'GET /api/event-types': () => json([]),
+      'POST /api/event-types': () => json(serverError, 500),
+    });
+    renderAt('/admin');
+    const panel = await findPanel();
+
+    await userEvent.click(await within(panel).findByRole('button', { name: '+ New event type' }));
+    await userEvent.type(within(panel).getByLabelText('Name'), 'Intro call');
+    await userEvent.click(within(panel).getByRole('button', { name: 'Create' }));
+
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(
+      "Couldn't create the event type. Please try again.",
+    );
+    expect(within(panel).getByLabelText('Name')).toHaveValue('Intro call');
+  });
+});

@@ -1,14 +1,12 @@
-import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
-import { createAppRouter } from './router';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { json, stubApi } from '@/test/api';
+import { renderAt } from '@/test/render';
 
-function renderAt(path: string) {
-  const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }));
-  render(<RouterProvider router={router} />);
-  return router;
-}
+beforeEach(() => {
+  stubApi({ 'GET /api/event-types': () => json([]) });
+});
 
 describe('home page', () => {
   it('introduces the service and links to booking', async () => {
