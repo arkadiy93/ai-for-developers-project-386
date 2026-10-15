@@ -4,7 +4,7 @@
 
 Разработайте совместно с ИИ сервис для бронирования календаря
 
-**Приложение:** https://ai-for-developers-project-386.onrender.com
+**Приложение:** https://ai-for-developers-project-386-zv9p.onrender.com
 
 Учебный проект Хекслета: https://ru.hexlet.io/programs/ai-for-developers
 Как это должно работать: https://files.hexlet.app/a/2ipc5m
@@ -61,7 +61,7 @@ docker build -t calendar .
 docker run --rm -e PORT=8080 -p 8080:8080 calendar   # http://localhost:8080
 ```
 
-Production развёрнут на [Render](https://render.com) по `render.yaml` (бесплатный web service, автодеплой из `main`): https://ai-for-developers-project-386.onrender.com. База SQLite лежит в контейнере и сбрасывается при каждом деплое, а бесплатный сервис засыпает без трафика, поэтому первый запрос может занять до минуты.
+Production развёрнут на [Render](https://render.com) по `render.yaml` (бесплатный web service, автодеплой из `main`): https://ai-for-developers-project-386-zv9p.onrender.com. База SQLite лежит в контейнере и сбрасывается при каждом деплое, а бесплатный сервис засыпает без трафика, поэтому первый запрос может занять до минуты.
 
 ### Коммиты и релизы
 
