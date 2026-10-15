@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/arkadiy93/ai-for-developers-project-386/compare/v0.4.0...v0.5.0) (2026-10-15)
+
+
+### Features
+
+* serve the frontend from the backend and add a Dockerfile ([c2ec710](https://github.com/arkadiy93/ai-for-developers-project-386/commit/c2ec710c61845b65a875047a48fe196732e37450))
+
 ## [0.4.0](https://github.com/arkadiy93/ai-for-developers-project-386/compare/v0.3.0...v0.4.0) (2026-10-15)
 
 
