@@ -51,6 +51,26 @@ model EventType {
   ...EventTypeInput;
 }
 
+/** One possible start time for an Event Type. */
+model SlotStart {
+  /** Serialised exactly like `Date#toISOString()`. */
+  start: utcDateTime;
+
+  /** False when the start is past or the call would overlap a Booking. */
+  available: boolean;
+}
+
+/** One day of the Booking Window, with every quarter-hour start whose call ends by 18:00 UTC. */
+model SlotDay {
+  date: plainDate;
+  starts: SlotStart[];
+}
+
+/** The 14 days of the Booking Window, starting today in UTC. */
+model Slots {
+  days: SlotDay[];
+}
+
 @route("/event-types")
 @tag("Event Types")
 namespace EventTypes {
@@ -65,6 +85,14 @@ namespace EventTypes {
     @body body: EventType;
   } | {
     @statusCode statusCode: 400;
+    @body body: Error;
+  };
+
+  /** Every start of the Event Type in the Booking Window, each marked available or not. */
+  @route("/{id}/slots")
+  @get
+  op slots(@path id: string): Slots | {
+    @statusCode statusCode: 404;
     @body body: Error;
   };
 }

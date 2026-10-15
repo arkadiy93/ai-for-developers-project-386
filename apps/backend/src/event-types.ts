@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { components } from '@calendar/api';
 import { Router } from 'express';
 import type { HttpError } from './errors.js';
+import { computeSlots } from './slots.js';
 import type { Store } from './store.js';
 
 type EventTypeInput = components['schemas']['EventTypeInput'];
@@ -19,7 +20,7 @@ function validate({ name, durationMinutes }: EventTypeInput): ErrorDetail[] {
   return details;
 }
 
-export function eventTypesRouter(store: Store) {
+export function eventTypesRouter(store: Store, now: () => Date) {
   const router = Router();
 
   router.get('/event-types', (_req, res) => {
@@ -47,6 +48,21 @@ export function eventTypesRouter(store: Store) {
 
     store.saveEventType(eventType);
     res.status(201).json(eventType);
+  });
+
+  router.get('/event-types/:id/slots', (req, res, next) => {
+    const eventType = store.getEventType(req.params.id);
+    if (!eventType) {
+      next({
+        status: 404,
+        code: 'EVENT_TYPE_NOT_FOUND',
+        message: 'event type not found',
+      } satisfies HttpError);
+      return;
+    }
+
+    const current = now();
+    res.json(computeSlots(eventType, store.listBookingsEndingAfter(current), current));
   });
 
   return router;

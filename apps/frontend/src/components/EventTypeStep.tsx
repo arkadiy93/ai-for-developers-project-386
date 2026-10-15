@@ -28,7 +28,7 @@ export function EventTypeStep({ selectedId, onSelect }: EventTypeStepProps) {
     return <LoadError message="Couldn't load event types." onRetry={reload} />;
   }
 
-  if (state.eventTypes.length === 0) {
+  if (state.data.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-6 text-center">
         <p className="font-medium">No calls to book yet.</p>
@@ -41,7 +41,7 @@ export function EventTypeStep({ selectedId, onSelect }: EventTypeStepProps) {
 
   return (
     <ul aria-label="Event types" className="grid gap-3 sm:grid-cols-2">
-      {state.eventTypes.map((eventType) => (
+      {state.data.map((eventType) => (
         <li key={eventType.id}>
           <button
             type="button"

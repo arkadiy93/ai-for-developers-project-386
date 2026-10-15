@@ -10,11 +10,11 @@ const apiSpec = createRequire(import.meta.url).resolve('@calendar/api/openapi.ya
 
 export interface AppDeps {
   db: DatabaseSync;
-  /** The clock. Defaults to the system clock once a route reads it. */
+  /** The clock. Defaults to the system clock. */
   now?: () => Date;
 }
 
-export function createApp({ db }: AppDeps) {
+export function createApp({ db, now = () => new Date() }: AppDeps) {
   const store = createStore(db);
 
   const app = express();
@@ -28,7 +28,7 @@ export function createApp({ db }: AppDeps) {
     }),
   );
 
-  app.use('/api', eventTypesRouter(store));
+  app.use('/api', eventTypesRouter(store, now));
 
   // A documented route with no handler yet still answers with the envelope.
   app.use(notFoundHandler);

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { DatabaseSync } from 'node:sqlite';
 import type { components } from '@calendar/api';
+import type { BookedTime } from './slots.js';
 
 type EventType = components['schemas']['EventType'];
 
@@ -14,6 +15,13 @@ export function createStore(db: DatabaseSync) {
     `SELECT id, name, description, duration_minutes AS durationMinutes
      FROM event_types ORDER BY name COLLATE NOCASE, id`,
   );
+  const selectEventType = db.prepare(
+    `SELECT id, name, description, duration_minutes AS durationMinutes
+     FROM event_types WHERE id = ?`,
+  );
+  const selectBookingsEndingAfter = db.prepare(
+    `SELECT start, end FROM bookings WHERE end > ? ORDER BY start`,
+  );
   const insertEventType = db.prepare(
     `INSERT INTO event_types (id, name, description, duration_minutes)
      VALUES (:id, :name, :description, :durationMinutes)`,
@@ -24,8 +32,16 @@ export function createStore(db: DatabaseSync) {
       return selectEventTypes.all() as unknown as EventType[];
     },
 
+    getEventType(id: string): EventType | undefined {
+      return selectEventType.get(id) as unknown as EventType | undefined;
+    },
+
     saveEventType(eventType: EventType) {
       insertEventType.run(eventType);
+    },
+
+    listBookingsEndingAfter(after: Date): BookedTime[] {
+      return selectBookingsEndingAfter.all(after.toISOString()) as unknown as BookedTime[];
     },
   };
 }
