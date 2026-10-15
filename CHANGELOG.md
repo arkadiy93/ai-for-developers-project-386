@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/arkadiy93/ai-for-developers-project-386/compare/v0.3.0...v0.4.0) (2026-10-15)
+
+
+### Features
+
+* show the Owner upcoming Bookings in the Admin area ([ca91d6c](https://github.com/arkadiy93/ai-for-developers-project-386/commit/ca91d6cff4250fad762cd26d1209d19e428e6f9f))
+
 ## [0.3.0](https://github.com/arkadiy93/ai-for-developers-project-386/compare/v0.2.0...v0.3.0) (2026-10-15)
 
 
