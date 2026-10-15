@@ -340,6 +340,7 @@ describe('booking page, steps 3 and 4: details and done', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Sorry, that time was just booked by someone else.');
+    expect(screen.getByRole('button', { name: 'Book' })).toBeDisabled();
     await userEvent.click(within(alert).getByRole('button', { name: 'Pick another time' }));
 
     expect(screen.getByText('2. Time')).toHaveAttribute('aria-current', 'step');
@@ -360,6 +361,7 @@ describe('booking page, steps 3 and 4: details and done', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('This event type is no longer available.');
+    expect(screen.getByRole('button', { name: 'Book' })).toBeDisabled();
     await userEvent.click(within(alert).getByRole('button', { name: 'Choose another event type' }));
 
     expect(screen.getByText('1. Event type')).toHaveAttribute('aria-current', 'step');

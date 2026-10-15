@@ -123,7 +123,7 @@ namespace EventTypes {
 
 /** What a Guest sends to book a call. */
 model BookingInput {
-  @format("uuid")
+  /** An id that no Event Type has is a 404, like the `/event-types/{id}` routes. */
   eventTypeId: string;
 
   /** Must be a free Slot of the Event Type right now, or the request is a 409. */

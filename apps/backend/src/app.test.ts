@@ -389,13 +389,13 @@ describe('booking a call', () => {
     expect(res.body).toMatchObject({ guestName: 'Ada', guestEmail: 'ada@example.com' });
   });
 
-  it('returns 404 EVENT_TYPE_NOT_FOUND for an unknown Event Type, deleted or never created', async () => {
+  it('returns 404 EVENT_TYPE_NOT_FOUND for an unknown Event Type, deleted, never created or malformed', async () => {
     const app = testApp();
     const deleted = await createEventType(app);
     await request(app).delete(`/api/event-types/${deleted}`).expect(204);
 
     const responses = await Promise.all(
-      [deleted, unknownId].map((eventTypeId) =>
+      [deleted, unknownId, 'not-a-uuid'].map((eventTypeId) =>
         request(app)
           .post('/api/bookings')
           .send({ eventTypeId, start: '2026-10-16T09:30:00.000Z', ...guest }),

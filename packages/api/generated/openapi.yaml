@@ -218,7 +218,7 @@ components:
       properties:
         eventTypeId:
           type: string
-          format: uuid
+          description: An id that no Event Type has is a 404, like the `/event-types/{id}` routes.
         start:
           type: string
           format: date-time

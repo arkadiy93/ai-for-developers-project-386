@@ -4,19 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api, type Booking, type BookingInput, type EventType } from '@/lib/api';
 import { formatDay, formatTime } from '@/lib/datetime';
+import { type FieldErrors, toFieldErrors } from '@/lib/field-errors';
 
-type Field = 'guestName' | 'guestEmail';
-type FieldErrors = Partial<Record<Field, string>>;
+type FieldName = 'guestName' | 'guestEmail';
 
-const fields: Field[] = ['guestName', 'guestEmail'];
+const fields: FieldName[] = ['guestName', 'guestEmail'];
 
 // The server's email rule: ajv-formats' "fast" email format, which express-openapi-validator uses.
 const emailPattern =
   /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
 
 // The same rules the server checks, on the trimmed values it would save.
-function validate({ guestName, guestEmail }: Pick<BookingInput, Field>): FieldErrors {
-  const errors: FieldErrors = {};
+function validate({
+  guestName,
+  guestEmail,
+}: Pick<BookingInput, FieldName>): FieldErrors<FieldName> {
+  const errors: FieldErrors<FieldName> = {};
   if (guestName === '') {
     errors.guestName = 'Enter your name.';
   } else if (guestName.length > 100) {
@@ -26,17 +29,6 @@ function validate({ guestName, guestEmail }: Pick<BookingInput, Field>): FieldEr
     errors.guestEmail = 'Email must be at most 254 characters.';
   } else if (!emailPattern.test(guestEmail)) {
     errors.guestEmail = 'Enter a valid email address.';
-  }
-  return errors;
-}
-
-// Paths are JSON pointers into the body, for example `/guestName`. Undefined if any isn't a form field.
-function toFieldErrors(details: { path: string; message: string }[]): FieldErrors | undefined {
-  const errors: FieldErrors = {};
-  for (const { path, message } of details) {
-    const field = fields.find((f) => path === `/${f}`);
-    if (!field) return undefined;
-    errors[field] = message;
   }
   return errors;
 }
@@ -64,7 +56,7 @@ export function DetailsStep({
 }: DetailsStepProps) {
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors<FieldName>>({});
   const [problem, setProblem] = useState<Problem>();
   const [submitting, setSubmitting] = useState(false);
 
@@ -93,7 +85,9 @@ export function DetailsStep({
         setProblem('gone');
         return;
       }
-      const serverErrors = error?.details?.length ? toFieldErrors(error.details) : undefined;
+      const serverErrors = error?.details?.length
+        ? toFieldErrors(fields, error.details)
+        : undefined;
       if (serverErrors) {
         setFieldErrors(serverErrors);
       } else {
@@ -164,7 +158,12 @@ export function DetailsStep({
             Something went wrong. Please try again.
           </p>
         )}
-        <Button type="submit" className="self-start" disabled={submitting}>
+        {/* After a 409 or 404 the only way on is the banner's button. */}
+        <Button
+          type="submit"
+          className="self-start"
+          disabled={submitting || problem === 'taken' || problem === 'gone'}
+        >
           Book
         </Button>
       </form>

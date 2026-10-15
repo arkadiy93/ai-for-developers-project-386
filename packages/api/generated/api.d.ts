@@ -110,7 +110,7 @@ export interface components {
         };
         /** @description What a Guest sends to book a call. */
         BookingInput: {
-            /** Format: uuid */
+            /** @description An id that no Event Type has is a 404, like the `/event-types/{id}` routes. */
             eventTypeId: string;
             /**
              * Format: date-time
