@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents working with code in this reposi
 
 ## Project
 
-Hexlet course project "Календарь звонков": a calendar call-booking service, built together with AI. It is a pnpm workspaces monorepo (Node 22+, pnpm 9, TypeScript 7, ESM throughout) with two packages: `apps/backend` and `apps/frontend`. The UI text is in English; the README is in Russian.
+Hexlet course project "Календарь звонков": a calendar call-booking service, built together with AI. It is a pnpm workspaces monorepo (Node 22.13+, pnpm 9, TypeScript 7, ESM throughout) with three packages: `packages/api`, `apps/backend` and `apps/frontend`. The UI text is in English; the README is in Russian.
 
 Do not delete, edit, or rename `.github/workflows/hexlet-check.yml`. Hexlet's automated grading depends on it.
 
@@ -19,6 +19,7 @@ pnpm lint           # oxlint --deny-warnings (warnings fail)
 pnpm typecheck      # tsc in every package
 pnpm build          # backend: tsc -> dist/; frontend: tsc -b && vite build
 pnpm format         # prettier --write . (pnpm format:check runs in CI)
+pnpm generate       # TypeSpec -> packages/api/generated/{openapi.yaml,api.d.ts}
 ```
 
 To run a single package or test:
@@ -30,12 +31,13 @@ pnpm --filter frontend test -- -t "shows ok"      # by test name
 pnpm --filter backend exec vitest                 # watch mode
 ```
 
-CI (`.github/workflows/ci.yml`) runs `format:check`, `lint`, `typecheck`, `test`, and `build`, in that order. All five must pass.
+CI (`.github/workflows/ci.yml`) first regenerates the contract and fails on any diff, then runs `format:check`, `lint`, `typecheck`, `test`, and `build`, in that order. All must pass.
 
 ## Architecture
 
-- **Backend** (`apps/backend`): Express 5. `src/app.ts` exports `createApp()`, which builds the app without listening. `src/index.ts` only calls `listen` on `PORT` (default 3000). Tests use Supertest on `createApp()` directly, so new routes go into the app factory and never into `index.ts`. All routes live under `/api`. The backend uses `NodeNext` module resolution, so relative imports need the `.js` extension (`import { createApp } from './app.js'`). `tsconfig.build.json` excludes `*.test.ts` from the build.
-- **Frontend** (`apps/frontend`): Vite + React 19 + Tailwind CSS v4 (through `@tailwindcss/vite`, so there is no tailwind config file; the theme is in `src/index.css`). The Vite dev server proxies `/api` to `http://localhost:3000`, so the frontend calls the backend with relative `/api/...` URLs. The `@/` alias points to `src/` and is set in both `vite.config.ts` and `tsconfig.app.json`. Vitest uses jsdom with globals, and `src/test/setup.ts` loads jest-dom matchers. Tests stub `fetch` with `vi.stubGlobal` instead of calling the real backend.
+- **Contract** (`packages/api`, ADR 0003): the API is contract-first. Change `main.tsp`, run `pnpm generate`, and commit the regenerated files with the code that implements them. Never edit `generated/` by hand; Prettier skips it so the CI diff check stays exact. The package pins TypeScript 5 because `openapi-typescript` needs the JS compiler API that TypeScript 7 lacks.
+- **Backend** (`apps/backend`): Express 5. `src/app.ts` exports `createApp({ db, now })`, which takes a `node:sqlite` `DatabaseSync` and an optional clock, and builds the app without listening. `src/index.ts` opens `DB_PATH` (default `apps/backend/data/calendar.db`, gitignored) and only calls `listen` on `PORT` (default 3000). Tests use Supertest on `createApp({ db: new DatabaseSync(':memory:'), now })` directly, so new routes go into the app factory and never into `index.ts`. `express-openapi-validator` checks every request and response against the contract, so a route or response shape missing from `main.tsp` fails. `src/errors.ts` maps every error into the `{ code, message, details? }` envelope. `src/store.ts` is the only module that runs SQL; the schema is `src/schema.sql` (`CREATE TABLE IF NOT EXISTS`, no migrations), and the build copies it into `dist/`. All routes live under `/api`. The backend uses `NodeNext` module resolution, so relative imports need the `.js` extension (`import { createApp } from './app.js'`). `tsconfig.build.json` excludes `*.test.ts` from the build.
+- **Frontend** (`apps/frontend`): Vite + React 19 + Tailwind CSS v4 (through `@tailwindcss/vite`, so there is no tailwind config file; the theme is in `src/index.css`). The Vite dev server proxies `/api` to `http://localhost:3000`, so the frontend calls the backend through the typed `openapi-fetch` client `api` from `@/lib/api`, never with hand-written `fetch` calls. The `@/` alias points to `src/` and is set in both `vite.config.ts` and `tsconfig.app.json`. Vitest uses jsdom with globals, and `src/test/setup.ts` loads jest-dom matchers. Tests stub `fetch` with `vi.stubGlobal` instead of calling the real backend.
 - **UI components**: shadcn/ui (style `base-nova`, built on `@base-ui/react` rather than Radix, with lucide icons). Generated components go in `src/components/ui/`, and oxlint's `only-export-components` rule is turned off there. Add components with the shadcn CLI (`pnpm --filter frontend exec shadcn add <name>`) or the `shadcn` MCP server set up in `.mcp.json`. Use `cn()` from `@/lib/utils` to merge class names.
 
 ## Conventions

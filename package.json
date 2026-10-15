@@ -5,10 +5,11 @@
   "type": "module",
   "packageManager": "pnpm@9.6.0",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "scripts": {
     "dev": "pnpm -r --parallel dev",
+    "generate": "pnpm --filter @calendar/api generate",
     "build": "pnpm -r build",
     "lint": "oxlint --deny-warnings",
     "typecheck": "pnpm -r typecheck",

@@ -1,11 +1,20 @@
+import { DatabaseSync } from 'node:sqlite';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 
+function testApp() {
+  return createApp({
+    db: new DatabaseSync(':memory:'),
+    now: () => new Date('2026-10-15T10:00:00.000Z'),
+  });
+}
+
 describe('unknown /api route', () => {
-  it('returns 404', async () => {
-    const res = await request(createApp()).get('/api/unknown');
+  it('returns 404 NOT_FOUND for an undocumented path', async () => {
+    const res = await request(testApp()).get('/api/unknown');
 
     expect(res.status).toBe(404);
+    expect(res.body).toMatchObject({ code: 'NOT_FOUND', message: expect.any(String) });
   });
 });

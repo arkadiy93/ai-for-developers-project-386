@@ -16,7 +16,7 @@
 
 ## Установка
 
-Требуется Node.js 22+ и pnpm 9+.
+Требуется Node.js 22.13+ и pnpm 9+.
 
 ```bash
 git clone https://github.com/arkadiy93/ai-for-developers-project-386.git
