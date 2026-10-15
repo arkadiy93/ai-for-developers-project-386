@@ -213,7 +213,6 @@ export function VariantA({ state }: Props) {
                   </Button>
                 );
               })}
-              ))}
             </div>
           )}
         </section>
