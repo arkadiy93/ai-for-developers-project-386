@@ -49,3 +49,17 @@ export function computeSlots(
     }),
   };
 }
+
+/**
+ * Whether `start` (as `toISOString()` text) is a Slot of the Event Type that hasn't started yet.
+ * Bookings are not considered: the store checks overlap when it saves the Booking.
+ */
+export function isUpcomingSlot(
+  eventType: Pick<EventType, 'durationMinutes'>,
+  start: string,
+  now: Date,
+): boolean {
+  return computeSlots(eventType, [], now).days.some((day) =>
+    day.starts.some((slot) => slot.start === start && slot.available),
+  );
+}

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { ApiError, EventType, Slots } from '@/lib/api';
+import type { ApiError, Booking, EventType, Slots } from '@/lib/api';
 
 type Handler = (request: Request) => Response | Promise<Response>;
 
@@ -81,4 +81,15 @@ export const workshopSlots: Slots = {
       ],
     },
   ],
+};
+
+/** What the server answers when a Guest books `workshop` at 09:30 tomorrow. */
+export const workshopBooking: Booking = {
+  id: '3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d',
+  eventTypeId: workshop.id,
+  eventTypeName: workshop.name,
+  start: '2026-10-16T09:30:00.000Z',
+  end: '2026-10-16T10:30:00.000Z',
+  guestName: 'Ada Lovelace',
+  guestEmail: 'ada@example.com',
 };

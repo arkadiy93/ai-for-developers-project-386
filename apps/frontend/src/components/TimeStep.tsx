@@ -3,28 +3,12 @@ import { LoadError } from '@/components/LoadError';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EventType, Slots } from '@/lib/api';
+import { formatDay, formatTime } from '@/lib/datetime';
 import { formatDuration } from '@/lib/duration';
 import { useSlots } from '@/lib/use-slots';
 import { cn } from '@/lib/utils';
 
 type SlotDay = Slots['days'][number];
-
-const dayFormat = new Intl.DateTimeFormat('en-US', {
-  weekday: 'short',
-  month: 'short',
-  day: 'numeric',
-  timeZone: 'UTC',
-});
-
-/** "Thu, Oct 15" for the plain date "2026-10-15". */
-function formatDay(date: string) {
-  return dayFormat.format(new Date(`${date}T00:00:00Z`));
-}
-
-/** "09:30" for a UTC datetime. */
-function formatTime(start: string) {
-  return start.slice(11, 16);
-}
 
 function freeCount(day: SlotDay) {
   return day.starts.filter((s) => s.available).length;

@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Books a free Slot. Any start that isn't a free Slot right now (taken by a Booking of any
+         *     Event Type, past, outside the Booking Window or Working Hours, off the quarter hour) is a
+         *     409 `SLOT_UNAVAILABLE`. An unknown Event Type is a 404 `EVENT_TYPE_NOT_FOUND`.
+         */
+        post: operations["Bookings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/event-types": {
         parameters: {
             query?: never;
@@ -64,6 +85,46 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description A Guest's call of one Event Type. Its Event Type name and end are fixed when it is made (ADR 0004). */
+        Booking: {
+            /**
+             * Format: uuid
+             * @description Server-generated.
+             */
+            id: string;
+            /** @description May point at an Event Type that has since been deleted. */
+            eventTypeId: string;
+            eventTypeName: string;
+            /**
+             * Format: date-time
+             * @description Serialised exactly like `Date#toISOString()`.
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description Serialised exactly like `Date#toISOString()`.
+             */
+            end: string;
+            guestName: string;
+            guestEmail: string;
+        };
+        /** @description What a Guest sends to book a call. */
+        BookingInput: {
+            /** Format: uuid */
+            eventTypeId: string;
+            /**
+             * Format: date-time
+             * @description Must be a free Slot of the Event Type right now, or the request is a 409.
+             */
+            start: string;
+            /** @description Must contain a non-space character. The server trims it before saving. */
+            guestName: string;
+            /**
+             * Format: email
+             * @description The server trims it before saving.
+             */
+            guestEmail: string;
+        };
         /** @description The body of every 4xx and 5xx response. */
         Error: {
             /** @description A stable machine-readable code, for example `VALIDATION_ERROR` or `NOT_FOUND`. */
@@ -135,6 +196,57 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    Bookings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookingInput"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            /** @description The server could not understand the request due to invalid syntax. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request conflicts with the current state of the server. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     EventTypes_list: {
         parameters: {
             query?: never;

@@ -12,3 +12,5 @@ export type EventType = components['schemas']['EventType'];
 export type EventTypeInput = components['schemas']['EventTypeInput'];
 export type ApiError = components['schemas']['Error'];
 export type Slots = components['schemas']['Slots'];
+export type Booking = components['schemas']['Booking'];
+export type BookingInput = components['schemas']['BookingInput'];

@@ -120,3 +120,67 @@ namespace EventTypes {
     @body body: Error;
   };
 }
+
+/** What a Guest sends to book a call. */
+model BookingInput {
+  @format("uuid")
+  eventTypeId: string;
+
+  /** Must be a free Slot of the Event Type right now, or the request is a 409. */
+  start: utcDateTime;
+
+  /** Must contain a non-space character. The server trims it before saving. */
+  @minLength(1)
+  @maxLength(100)
+  guestName: string;
+
+  /** The server trims it before saving. */
+  @format("email")
+  @maxLength(254)
+  guestEmail: string;
+}
+
+/** A Guest's call of one Event Type. Its Event Type name and end are fixed when it is made (ADR 0004). */
+model Booking {
+  /** Server-generated. */
+  @format("uuid")
+  id: string;
+
+  /** May point at an Event Type that has since been deleted. */
+  eventTypeId: string;
+
+  eventTypeName: string;
+
+  /** Serialised exactly like `Date#toISOString()`. */
+  start: utcDateTime;
+
+  /** Serialised exactly like `Date#toISOString()`. */
+  end: utcDateTime;
+
+  guestName: string;
+  guestEmail: string;
+}
+
+@route("/bookings")
+@tag("Bookings")
+namespace Bookings {
+  /**
+   * Books a free Slot. Any start that isn't a free Slot right now (taken by a Booking of any
+   * Event Type, past, outside the Booking Window or Working Hours, off the quarter hour) is a
+   * 409 `SLOT_UNAVAILABLE`. An unknown Event Type is a 404 `EVENT_TYPE_NOT_FOUND`.
+   */
+  @post
+  op create(@body body: BookingInput): {
+    @statusCode statusCode: 201;
+    @body body: Booking;
+  } | {
+    @statusCode statusCode: 400;
+    @body body: Error;
+  } | {
+    @statusCode statusCode: 404;
+    @body body: Error;
+  } | {
+    @statusCode statusCode: 409;
+    @body body: Error;
+  };
+}
